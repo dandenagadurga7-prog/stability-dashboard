@@ -940,6 +940,10 @@
     var atItems = ["A", "B", "C", "D", "E", "F"].map(function (l) { return '<li><span class="mark">' + has(m.studyAt, l) + "</span> " + l + ".</li>"; }).join("");
     var stItems = sampleTypes.map(function (s) { return '<li><span class="mark">' + ((m.sampleType || "1  Lab sample") === s ? "\u2713" : "") + "</span> " + h(s) + "</li>"; }).join("");
     var testNames = (p.tests || []).map(function (t) { var d = SD.testById(t); return d ? d.name : t; }).join(", ");
+    function nthMonth(m) { var suf = ["th", "st", "nd", "rd"], v = m % 100; return m + (suf[(v - 20) % 10] || suf[v] || suf[0]); }
+    var tpLabels = ["INITIAL"].concat((p.timePoints || []).map(function (m) { return nthMonth(m) + " month"; }));
+    function schedRow(name, mark) { return "<tr><td>" + h(name) + "</td>" + tpLabels.map(function () { return '<td class="num">' + mark + "</td>"; }).join("") + "</tr>"; }
+    var schedRows = (p.tests || []).map(function (t) { var d = SD.testById(t); return schedRow(d ? d.name : t, "\u2713"); }).join("") + schedRow("Enantiomeric purity by HPLC", "X") + schedRow("Other test", "X");
     var ap = (pr.approvals || []).map(function (a) { return h(a.level + " · " + a.action + (a.comment ? " — " + a.comment : "") + " · " + a.user + " · " + a.at); }).join("<br>");
     return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> <button class="btn" onclick="window.print()">Print / PDF</button></div>' +
       '<div class="report-preview">' +
@@ -964,6 +968,9 @@
       "<tr><th>Tests</th><td>" + h(testNames) + "</td></tr>" +
       "<tr><th>Packing</th><td>" + ((m.packing && typeof m.packing === "object") ? ("<strong>Innermost:</strong> " + h(m.packing.innermost || "") + "<br><strong>Middle:</strong> " + h(m.packing.middle || "") + "<br><strong>Outermost:</strong> " + h(m.packing.outermost || "")) : h(m.packing || p.pack)) + "</td></tr>" +
       "</tbody></table>" +
+      '<h3 style="font-size:14px;margin-top:18px">Schedule</h3>' +
+      '<table><thead><tr><th>Test</th>' + tpLabels.map(function (l) { return '<th class="num">' + h(l) + "</th>"; }).join("") + "</tr></thead><tbody>" + schedRows + "</tbody></table>" +
+      '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>' +
       '<div class="sign-grid"><div class="s">Prepared By<br>' + h(m.preparedBy || "—") + "</div><div class=\"s\">Reviewed By<br>" + h(m.reviewedBy || "—") + "</div><div class=\"s\">Approved By<br>" + h(m.approvedBy || "—") + "</div></div>" +
       (ap ? '<p class="muted" style="margin-top:10px">Approval history:<br>' + ap + "</p>" : "") +
       '<div class="rp-foot"><span>Format No: ' + h(m.formNo || "F-01-01/ARD015") + "</span><span>Status: " + h(ps) + "</span><span>Page 1 of 1</span></div>" +
