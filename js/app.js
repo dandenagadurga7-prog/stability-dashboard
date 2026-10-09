@@ -963,7 +963,10 @@
     var sigReviewed = apUser("Reviewer", "approved") || "—";
     var sigApprovedCrd = apUser("Group Leader", "approved") || "—";
     var sigApprovedArd = "—";
-    return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> <button class="btn" onclick="window.print()">Print / PDF</button></div>' +
+    var reviewBtns = "";
+    if (ps === "UNDER_REVIEW") reviewBtns = '<button class="btn primary" data-act="proto-review-approve" data-id="' + id + '">Reviewer: approve</button> <button class="btn danger" data-act="proto-changes" data-id="' + id + '">Request changes</button> ';
+    else if (ps === "PENDING_GL") reviewBtns = '<button class="btn primary" data-act="proto-gl-approve" data-id="' + id + '">Group Leader: approve</button> <button class="btn danger" data-act="proto-changes" data-id="' + id + '">Request changes</button> ';
+    return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> ' + reviewBtns + '<button class="btn" onclick="window.print()">Print / PDF</button></div>' +
       '<div class="report-preview">' +
       '<div class="rp-head"><div><h2 style="text-align:left">HETERO (R&amp;D)<br><small style="font-weight:400;font-size:11px;color:var(--muted)">KAZIPALLY</small></h2><div style="color:var(--muted);font-size:11px">STABILITY PROTOCOL</div></div>' +
       '<div style="text-align:right"><strong style="border:1px solid var(--line-strong);padding:4px 8px;border-radius:4px;font-family:var(--serif)">HETERO</strong></div></div>' +

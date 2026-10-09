@@ -267,8 +267,8 @@
       var ps = this.protocolStatus(state, protocolId);
       var today = dates.todayISO();
       if (ps === "DRAFT") return { label: "Submit protocol for review", act: "proto-submit", id: protocolId };
-      if (ps === "UNDER_REVIEW") return { label: "Review protocol (Reviewer)", act: "proto-review-approve", id: protocolId };
-      if (ps === "PENDING_GL") return { label: "Group Leader sign-off", act: "proto-gl-approve", id: protocolId };
+      if (ps === "UNDER_REVIEW") return { label: "Review protocol (Reviewer)", route: "#/protocoldoc/" + protocolId };
+      if (ps === "PENDING_GL") return { label: "Group Leader sign-off", route: "#/protocoldoc/" + protocolId };
       if (ps === "CHANGES_REQUESTED") return { label: "Update protocol and resubmit", act: "proto-submit", id: protocolId };
       if (!pr.packing) return { label: "Pack samples", act: "pack-open", id: protocolId };
       if (!pr.er) return { label: "Generate ER number", act: "er-generate", id: protocolId };
