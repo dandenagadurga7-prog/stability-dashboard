@@ -930,13 +930,13 @@
     var ps = SD.lifecycle.protocolStatus(S, id);
     var reasonList = ["1. New product", "2. New process / polymorph", "3. Others (specify)"];
     var condList = ["A. 40±2°C / 75±5% RH", "B. 25±2°C / 60±5% RH", "C. 5±3°C", "D. -20°C±5°C", "E. Extra samples loaded", "F. Any other (specify)"];
-    var encList = ["Initial Certificate of Analysis", "Requested tests related documents", "Any other (specify)"];
+    var encList = ["A. Initial Certificate of Analysis", "B. Requested tests related documents", "C. Any other (specify)"];
     function has(arr, x) { return (arr || []).indexOf(x) >= 0 ? "\u2713" : ""; }
     function li(list, item) { return '<li><span class="mark">' + has(list, item) + "</span> " + h(item) + "</li>"; }
     var sampleTypes = ["1  Lab sample", "2  Lab validation sample", "3  Others (specify)"];
     var reasonItems = reasonList.map(function (r) { return li(m.reason, r); }).join("");
     var condItems = condList.map(function (c) { return li(m.sampleConditions, c); }).join("");
-    var encItems = encList.map(function (e) { return '<li><span class="mark" style="color:var(--muted)">\u2022</span> ' + h(e) + (has(m.enclosures, e) ? ' <span style="color:var(--success);font-weight:800">\u2713</span>' : "") + "</li>"; }).join("");
+    var encItems = encList.map(function (e) { return li(m.enclosures, e); }).join("");
     var atItems = ["A", "B", "C", "D", "E", "F"].map(function (l) { return '<li><span class="mark">' + has(m.studyAt, l) + "</span> " + l + ".</li>"; }).join("");
     var stItems = sampleTypes.map(function (s) { return '<li><span class="mark">' + ((m.sampleType || "1  Lab sample") === s ? "\u2713" : "") + "</span> " + h(s) + "</li>"; }).join("");
     var testNames = (p.tests || []).map(function (t) { var d = SD.testById(t); return d ? d.name : t; }).join(", ");
@@ -1367,9 +1367,9 @@
       npCheck("npReason1", "1. New product", true) + npCheck("npReason2", "2. New process / polymorph", false) + npCheck("npReason3", "3. Others (specify)", false) +
       '<input class="input" id="npReasonOther" placeholder="Others — specify" style="margin-top:4px" />' +
       '<div class="eyebrow" style="margin-top:12px">Enclosures</div>' +
-      '<span class="muted" style="font-size:11px">• </span>' + npCheck("npEncA", "Initial Certificate of Analysis", true) +
-      '<span class="muted" style="font-size:11px">• </span>' + npCheck("npEncB", "Requested tests related documents", true) +
-      '<span class="muted" style="font-size:11px">• </span>' + npCheck("npEncC", "Any other (specify)", false) +
+      npCheck("npEncA", "A. Initial Certificate of Analysis", true) +
+      npCheck("npEncB", "B. Requested tests related documents", true) +
+      npCheck("npEncC", "C. Any other (specify)", false) +
       "</div>" +
       '<div class="proto-col"><div class="eyebrow">Stability Study Required At</div>' +
       npCheck("npCondA", "A. 40±2°C / 75±5% RH", true) + npCheck("npCondB", "B. 25±2°C / 60±5% RH", true) +
@@ -1997,9 +1997,9 @@
       var at = [];
       ["A", "B", "C", "D", "E", "F"].forEach(function (l) { if (chk("npAt" + l)) at.push(l); });
       var enc = [];
-      if (chk("npEncA")) enc.push("Initial Certificate of Analysis");
-      if (chk("npEncB")) enc.push("Requested tests related documents");
-      if (chk("npEncC")) enc.push("Any other (specify)");
+      if (chk("npEncA")) enc.push("A. Initial Certificate of Analysis");
+      if (chk("npEncB")) enc.push("B. Requested tests related documents");
+      if (chk("npEncC")) enc.push("C. Any other (specify)");
       var sampleType = chk("npSampleType2") ? "2  Lab validation sample" : (chk("npSampleType3") ? "3  Others (specify)" : "1  Lab sample");
       var nid = "p" + Date.now();
       var newProto = {
