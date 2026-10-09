@@ -976,7 +976,12 @@
       "<tr><th>Packing</th><td>" + ((m.packing && typeof m.packing === "object") ? ("<strong>Innermost:</strong> " + h(m.packing.innermost || "") + "<br><strong>Middle:</strong> " + h(m.packing.middle || "") + "<br><strong>Outermost:</strong> " + h(m.packing.outermost || "")) : h(m.packing || p.pack)) + "</td></tr>" +
       "</tbody></table>" +
       '<h3 style="font-size:14px;margin-top:18px">Schedule</h3>' +
-      '<table class="sched"><thead><tr><th>Schedule</th>' + docCols.map(function (l) { var extra = (l === "Other test" && m.schedule && m.schedule.otherTest) ? " / " + h(m.schedule.otherTest) : ""; return '<th class="num">' + hHead(l) + extra + "</th>"; }).join("") + "</tr></thead><tbody>" + docSchedRows + "</tbody></table>" +
+      '<table class="sched"><thead><tr><th>Schedule</th>' + docCols.map(function (l) {
+        var extra = "";
+        if (l === "Water content /") extra = " / " + h((m.schedule && m.schedule.waterText) ? m.schedule.waterText : "LOD/TGA");
+        if (l === "Other test") extra = " / " + h((m.schedule && m.schedule.otherTest) ? m.schedule.otherTest : "");
+        return '<th class="num">' + hHead(l) + extra + "</th>";
+      }).join("") + "</tr></thead><tbody>" + docSchedRows + "</tbody></table>" +
       '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>' +
       '<div class="sign-grid"><div class="s">Prepared By<br>' + h(m.preparedBy || "—") + "</div><div class=\"s\">Reviewed By<br>" + h(m.reviewedBy || "—") + "</div><div class=\"s\">Approved By<br>" + h(m.approvedBy || "—") + "</div></div>" +
       (ap ? '<p class="muted" style="margin-top:10px">Approval history:<br>' + ap + "</p>" : "") +
@@ -1359,7 +1364,7 @@
   function monthLabel(m) { var s = ["th", "st", "nd", "rd"], v = m % 100; return m + (s[(v - 20) % 10] || s[v] || s[0]) + " month"; }
 
   /* Company protocol Schedule template (page 4 of F-01-01/ARD015) */
-  var SCHED_ROWS = ["Description", "IR", "Water content /|LOD/TGA", "XRD", "Related compounds|by HPLC", "Assay", "Enantiomeric purity|by HPLC", "Other test"];
+  var SCHED_ROWS = ["Description", "IR", "Water content /", "XRD", "Related compounds|by HPLC", "Assay", "Enantiomeric purity|by HPLC", "Other test"];
   var SCHED_COLS = ["INITIAL", "1st month", "2nd month", "3rd month", "6th month", "9th month", "12th month"];
   var SCHED_DEFAULT_TICK = 6; /* first 6 rows default ticked, last 2 default X */
   function hHead(label) { return String(label).split("|").map(h).join("<br>"); }
@@ -1443,7 +1448,10 @@
     var el = document.getElementById("npSchedule");
     if (!el) return;
     var head = "<tr><th>Schedule</th>" + SCHED_ROWS.map(function (n) {
-      return '<th class="num">' + hHead(n) + (n === "Other test" ? ' /<br><input class="input" id="npOtherTest" placeholder="type purpose" style="width:112px;margin-top:4px" />' : "") + "</th>";
+      var extra = "";
+      if (n === "Water content /") extra = ' /<br><input class="input" id="npWaterText" placeholder="type LOD / TGA" style="width:112px;margin-top:4px" />';
+      if (n === "Other test") extra = ' /<br><input class="input" id="npOtherTest" placeholder="type purpose" style="width:112px;margin-top:4px" />';
+      return '<th class="num">' + hHead(n) + extra + "</th>";
     }).join("") + "</tr>";
     var body = SCHED_COLS.map(function (tp, ri) {
       return "<tr><td>" + h(tp) + "</td>" + SCHED_ROWS.map(function (n, ci) {
@@ -1458,9 +1466,11 @@
 
   function readNpSchedule() {
     var otherEl = document.getElementById("npOtherTest");
+    var waterEl = document.getElementById("npWaterText");
     return {
       cols: SCHED_ROWS,
       otherTest: otherEl ? String(otherEl.value).trim() : "",
+      waterText: waterEl ? String(waterEl.value).trim() : "",
       rows: SCHED_COLS.map(function (tp, ri) {
         return { label: tp, marks: SCHED_ROWS.map(function (n, ci) { var el = document.getElementById("npSc_" + ri + "_" + ci); return !!(el && el.checked); }) };
       })
