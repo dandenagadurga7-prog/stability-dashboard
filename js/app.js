@@ -962,7 +962,7 @@
       "<tr><th>Storage condition</th><td>" + h(p.storageCondition) + "</td></tr>" +
       "<tr><th>Time points</th><td>" + h((p.timePoints || []).join(", ") + " months") + "</td></tr>" +
       "<tr><th>Tests</th><td>" + h(testNames) + "</td></tr>" +
-      "<tr><th>Packing</th><td>" + h(m.packing || p.pack) + "</td></tr>" +
+      "<tr><th>Packing</th><td>" + ((m.packing && typeof m.packing === "object") ? ("<strong>Innermost:</strong> " + h(m.packing.innermost || "") + "<br><strong>Middle:</strong> " + h(m.packing.middle || "") + "<br><strong>Outermost:</strong> " + h(m.packing.outermost || "")) : h(m.packing || p.pack)) + "</td></tr>" +
       "</tbody></table>" +
       '<div class="sign-grid"><div class="s">Prepared By<br>' + h(m.preparedBy || "—") + "</div><div class=\"s\">Reviewed By<br>" + h(m.reviewedBy || "—") + "</div><div class=\"s\">Approved By<br>" + h(m.approvedBy || "—") + "</div></div>" +
       (ap ? '<p class="muted" style="margin-top:10px">Approval history:<br>' + ap + "</p>" : "") +
@@ -1385,7 +1385,10 @@
 
       '<div class="eyebrow" style="margin-top:14px">Study design</div>' +
       '<label class="fld" style="margin-top:6px">Storage condition</label><input class="input" id="npCondition" value="25°C ± 2°C / 60% RH ± 5% RH" />' +
-      '<label class="fld" style="margin-top:10px">Packing (innermost → outermost)</label><textarea class="input" id="npPack" rows="2">LDPE bag purged with nitrogen, twisted and tied with tag, inserted in ALUM bag heat sealed under nitrogen purge; finally kept in HDPE container along with silica gel.</textarea>' +
+      '<div class="eyebrow" style="margin-top:14px">Packing</div>' +
+      '<label class="fld" style="margin-top:6px">Innermost</label><input class="input" id="npPackInner" value="The material should be packed in LDPE bag purged with nitrogen, twisted and tied with tag," />' +
+      '<label class="fld" style="margin-top:8px">Middle</label><input class="input" id="npPackMiddle" value="then that bag should be inserted in ALUM bag heat sealed under nitrogen purge." />' +
+      '<label class="fld" style="margin-top:8px">Outermost</label><input class="input" id="npPackOuter" value="Finally kept in HDPE container along with silica gel." />' +
       '<label class="fld" style="margin-top:10px">Time points (months, comma separated)</label><input class="input" id="npTp" value="1,2,3,6,9,12" />' +
       '<label class="fld" style="margin-top:10px">Tests (from STP)</label><select class="select" id="npTests" multiple size="6" style="height:auto">' + testOptions + "</select>" +
 
@@ -2006,7 +2009,7 @@
         id: nid, protocolNo: SD.ids.next(S, "prot"), product: product,
         productCode: val("npCode") || "—", apiOrForm: "Drug substance",
         storageCondition: val("npCondition") || "Not specified", humidity: "NA",
-        pack: val("npPack") || "Not specified", batches: [batch],
+        pack: [val("npPackInner"), val("npPackMiddle"), val("npPackOuter")].filter(Boolean).join(" ") || "Not specified", batches: [batch],
         timePoints: tps, tests: tests, effectiveDate: today(), version: "V1.0", status: "Active",
         reason: reasons.join("; ") || "—", projectCode: val("npCode") || "—",
         manufacturingLocation: val("npMfg"), dateIn: val("npDateIn"),
@@ -2016,7 +2019,7 @@
           sampleConditions: conds, sampleConditionOther: val("npCondOther"), studyAt: at, enclosures: enc, sampleType: sampleType,
           manufacturingLocation: val("npMfg"), stpNo: val("npStpNo"), projectCode: val("npCode"), dateIn: val("npDateIn"),
           preparedBy: val("npPreparedBy") || S.currentUser, reviewedBy: val("npReviewedBy"), approvedBy: val("npApprovedBy"),
-          packing: val("npPack")
+          packing: { innermost: val("npPackInner"), middle: val("npPackMiddle"), outermost: val("npPackOuter") }
         }
       };
       S.protocols.push(newProto);
