@@ -984,7 +984,7 @@
         return '<th class="num">' + hHead(l) + "</th>";
       }).join("") + "</tr></thead><tbody>" + docSchedRows + "</tbody></table>" +
       '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>' +
-      '<div class="sign-grid"><div class="s">Prepared By<br>' + h(m.preparedBy || "—") + "</div><div class=\"s\">Reviewed By<br>" + h(m.reviewedBy || "—") + "</div><div class=\"s\">Approved By<br>" + h(m.approvedBy || "—") + "</div></div>" +
+      '<div class="sign-grid" style="grid-template-columns:repeat(4,1fr)"><div class="s">Prepared By (Analyst)<br>' + h(m.preparedBy || "—") + '</div><div class="s">Reviewed By (ARD)<br>' + h(m.reviewedBy || "—") + '</div><div class="s">Approved By (CRD)<br>' + h(m.approvedBy || "—") + '</div><div class="s">Approved By (ARD)<br>' + h(m.approvedByArd || "—") + "</div></div>" +
       (ap ? '<p class="muted" style="margin-top:10px">Approval history:<br>' + ap + "</p>" : "") +
       '<div class="rp-foot"><span>Format No: ' + h(m.formNo || "F-01-01/ARD015") + "</span><span>Status: " + h(ps) + "</span><span>Page 1 of 1</span></div>" +
       "</div>";
@@ -1434,10 +1434,11 @@
       '<div id="npSchedule"></div>' +
 
       '<div class="eyebrow" style="margin-top:14px">Signatures</div>' +
-      '<div class="proto-grid" style="grid-template-columns:1fr 1fr 1fr;margin-top:6px">' +
-      '<div><label class="fld">Prepared By</label><input class="input" id="npPreparedBy" value="' + h(S.currentUser) + '" /></div>' +
-      '<div><label class="fld">Reviewed By</label><input class="input" id="npReviewedBy" value="Dr. V. Sharma" /></div>' +
-      '<div><label class="fld">Approved By (GL / DQA)</label><input class="input" id="npApprovedBy" value="Dr. L. Menon" /></div>' +
+      '<div class="proto-grid" style="grid-template-columns:repeat(4,1fr);margin-top:6px">' +
+      '<div><label class="fld">Prepared By (Analyst)</label><input class="input" id="npPreparedBy" value="' + h(S.currentUser) + '" /></div>' +
+      '<div><label class="fld">Reviewed By (ARD)</label><input class="input" id="npReviewedBy" value="Dr. V. Sharma" /></div>' +
+      '<div><label class="fld">Approved By (CRD)</label><input class="input" id="npApprovedBy" value="Dr. L. Menon" /></div>' +
+      '<div><label class="fld">Approved By (ARD)</label><input class="input" id="npApprovedByArd" value="" /></div>' +
       "</div>" +
 
       '<div style="margin-top:16px"><button class="btn primary" data-act="np-save">Create protocol (Draft)</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
@@ -2106,7 +2107,7 @@
           drugSubstance: product, batch: batch, reason: reasons, reasonOther: val("npReasonOther"),
           sampleConditions: conds, sampleConditionOther: val("npCondOther"), studyAt: at, enclosures: enc, sampleType: sampleType,
           manufacturingLocation: val("npMfg"), stpNo: val("npStpNo"), projectCode: val("npCode"), dateIn: val("npDateIn"),
-          preparedBy: val("npPreparedBy") || S.currentUser, reviewedBy: val("npReviewedBy"), approvedBy: val("npApprovedBy"),
+          preparedBy: val("npPreparedBy") || S.currentUser, reviewedBy: val("npReviewedBy"), approvedBy: val("npApprovedBy"), approvedByArd: val("npApprovedByArd"),
           packing: { innermost: val("npPackInner"), middle: val("npPackMiddle"), outermost: val("npPackOuter") },
           schedule: readNpSchedule()
         }
