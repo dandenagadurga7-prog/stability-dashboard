@@ -929,7 +929,7 @@
     var pr = projectOf(id), m = p.protocolMeta || {};
     var ps = SD.lifecycle.protocolStatus(S, id);
     var reasonList = ["1. New product", "2. New process / polymorph", "3. Others (specify)"];
-    var condList = ["A  40±2°C / 75±5% RH", "B  25±2°C / 60±5% RH", "C  5±3°C", "D  -20°C±5°C", "E  Extra samples loaded", "F  Any other (specify)"];
+    var condList = ["A. 40±2°C / 75±5% RH", "B. 25±2°C / 60±5% RH", "C. 5±3°C", "D. -20°C±5°C", "E. Extra samples loaded", "F. Any other (specify)"];
     var encList = ["Initial Certificate of Analysis", "Requested tests related documents", "Any other (specify)"];
     function has(arr, x) { return (arr || []).indexOf(x) >= 0 ? "\u2713" : ""; }
     function li(list, item) { return '<li><span class="mark">' + has(list, item) + "</span> " + h(item) + "</li>"; }
@@ -952,12 +952,11 @@
       "<tr><th>Batch No.</th><td>" + h(p.batches.join(", ")) + "</td><th>Mfg Date</th><td>" + h(m.dateIn ? fmt(m.dateIn) : "—") + "</td></tr>" +
       "<tr><th>Manufacturing location</th><td>" + h(m.manufacturingLocation || "—") + "</td><th>STP No.</th><td>" + h(m.stpNo || p.protocolNo) + "</td></tr>" +
       "</tbody></table>" +
-      '<div class="proto-grid" style="margin:10px 0">' +
+      '<div class="proto-grid" style="grid-template-columns:1fr 1fr;margin:10px 0">' +
       '<div class="proto-col"><div class="eyebrow">Reason(s) for Stability study [1 to 3]</div><ul class="proto-list">' + reasonItems + "</ul>" + (m.reasonOther ? '<div class="muted" style="font-size:11px">Others: ' + h(m.reasonOther) + "</div>" : "") +
       '<div class="eyebrow" style="margin-top:10px">Enclosures</div><ul class="proto-list">' + encItems + "</ul></div>" +
-      '<div class="proto-col"><div class="eyebrow">Sample details [1 to 3]</div><ul class="proto-list">' + condItems + "</ul>" + (m.sampleConditionOther ? '<div class="muted" style="font-size:11px">Any other: ' + h(m.sampleConditionOther) + "</div>" : "") +
+      '<div class="proto-col"><div class="eyebrow">Stability Study Required At</div><ul class="proto-list">' + condItems + "</ul>" + (m.sampleConditionOther ? '<div class="muted" style="font-size:11px">Any other: ' + h(m.sampleConditionOther) + "</div>" : "") +
       '<div class="eyebrow" style="margin-top:10px">Sample Details</div><ul class="proto-list">' + stItems + "</ul></div>" +
-      '<div class="proto-col"><div class="eyebrow">Stability Study Requirement</div><div style="font-size:13px;padding:6px 0">a. &nbsp;&nbsp; b. &nbsp;&nbsp; c. &nbsp;&nbsp; d. &nbsp;&nbsp; e. &nbsp;&nbsp; f.</div></div>' +
       "</div>" +
       "<table><tbody>" +
       "<tr><th>Storage condition</th><td>" + h(p.storageCondition) + "</td></tr>" +
@@ -1363,7 +1362,7 @@
       "</div>" +
       '<div><label class="fld" style="margin-top:8px">Mfg Date</label><input class="input" type="date" id="npDateIn" value="' + today() + '" /></div>' +
 
-      '<div class="proto-grid" style="margin-top:14px">' +
+      '<div class="proto-grid" style="grid-template-columns:1fr 1fr;margin-top:14px">' +
       '<div class="proto-col"><div class="eyebrow">Reason(s) for Stability study [1 to 3]</div>' +
       npCheck("npReason1", "1. New product", true) + npCheck("npReason2", "2. New process / polymorph", false) + npCheck("npReason3", "3. Others (specify)", false) +
       '<input class="input" id="npReasonOther" placeholder="Others — specify" style="margin-top:4px" />' +
@@ -1372,18 +1371,15 @@
       '<span class="muted" style="font-size:11px">• </span>' + npCheck("npEncB", "Requested tests related documents", true) +
       '<span class="muted" style="font-size:11px">• </span>' + npCheck("npEncC", "Any other (specify)", false) +
       "</div>" +
-      '<div class="proto-col"><div class="eyebrow">Sample details [1 to 3]</div>' +
-      npCheck("npCondA", "A  40±2°C / 75±5% RH", true) + npCheck("npCondB", "B  25±2°C / 60±5% RH", true) +
-      npCheck("npCondC", "C  5±3°C", false) + npCheck("npCondD", "D  -20°C±5°C", false) +
-      npCheck("npCondE", "E  Extra samples loaded", false) + npCheck("npCondF", "F  Any other (specify)", false) +
+      '<div class="proto-col"><div class="eyebrow">Stability Study Required At</div>' +
+      npCheck("npCondA", "A. 40±2°C / 75±5% RH", true) + npCheck("npCondB", "B. 25±2°C / 60±5% RH", true) +
+      npCheck("npCondC", "C. 5±3°C", false) + npCheck("npCondD", "D. -20°C±5°C", false) +
+      npCheck("npCondE", "E. Extra samples loaded", false) + npCheck("npCondF", "F. Any other (specify)", false) +
       '<input class="input" id="npCondOther" placeholder="Any other — specify" style="margin-top:4px" />' +
       '<div class="eyebrow" style="margin-top:12px">Sample Details</div>' +
       '<label class="check" style="cursor:pointer"><input type="radio" name="npSampleType" id="npSampleType1" checked /> <div class="c-label">1  Lab sample</div></label>' +
       '<label class="check" style="cursor:pointer"><input type="radio" name="npSampleType" id="npSampleType2" /> <div class="c-label">2  Lab validation sample</div></label>' +
       '<label class="check" style="cursor:pointer"><input type="radio" name="npSampleType" id="npSampleType3" /> <div class="c-label">3  Others (specify)</div></label>' +
-      "</div>" +
-      '<div class="proto-col"><div class="eyebrow">Stability Study Requirement</div>' +
-      '<div style="padding:6px 0;font-size:13px">a. &nbsp;&nbsp; b. &nbsp;&nbsp; c. &nbsp;&nbsp; d. &nbsp;&nbsp; e. &nbsp;&nbsp; f.</div>' +
       "</div>" +
       "</div>" +
 
@@ -1992,12 +1988,12 @@
       if (chk("npReason2")) reasons.push("2. New process / polymorph");
       if (chk("npReason3")) reasons.push("3. Others (specify)");
       var conds = [];
-      if (chk("npCondA")) conds.push("A  40±2°C / 75±5% RH");
-      if (chk("npCondB")) conds.push("B  25±2°C / 60±5% RH");
-      if (chk("npCondC")) conds.push("C  5±3°C");
-      if (chk("npCondD")) conds.push("D  -20°C±5°C");
-      if (chk("npCondE")) conds.push("E  Extra samples loaded");
-      if (chk("npCondF")) conds.push("F  Any other (specify)");
+      if (chk("npCondA")) conds.push("A. 40±2°C / 75±5% RH");
+      if (chk("npCondB")) conds.push("B. 25±2°C / 60±5% RH");
+      if (chk("npCondC")) conds.push("C. 5±3°C");
+      if (chk("npCondD")) conds.push("D. -20°C±5°C");
+      if (chk("npCondE")) conds.push("E. Extra samples loaded");
+      if (chk("npCondF")) conds.push("F. Any other (specify)");
       var at = [];
       ["A", "B", "C", "D", "E", "F"].forEach(function (l) { if (chk("npAt" + l)) at.push(l); });
       var enc = [];
