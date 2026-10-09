@@ -8,6 +8,7 @@
   store.save();
 
   var filters = { search: "", product: "", batch: "", status: "", storage: "", analyst: "", timePoint: "" };
+  var protoFilter = "";
   var scheduleMonth = dates.monthKey(dates.todayISO());
   var route = { name: "dashboard", param: null };
 
@@ -388,23 +389,26 @@
   };
 
   VIEWS.protocols = function () {
-    var rows = S.protocols.map(function (p) {
+    var list = S.protocols.filter(function (p) { return !protoFilter || SD.lifecycle.protocolStatus(S, p.id) === protoFilter; });
+    var rows = list.map(function (p) {
       var ps = SD.lifecycle.protocolStatus(S, p.id), pr = projectOf(p.id);
       return "<tr>" +
-        '<td><a href="#/project/' + p.id + '"><strong>' + h(p.protocolNo) + "</strong></a></td>" +
+        '<td><a href="#/project/' + p.id + '"><strong>' + h(p.protocolNo) + '</strong></a><div style="margin-top:4px">' + protoBadge(ps) + "</div></td>" +
         '<td class="wrap">' + h(p.product) + "</td>" +
         "<td>" + h(p.productCode) + "</td>" +
         "<td>" + h(p.batches.join(", ")) + "</td>" +
         "<td>" + h(p.timePoints.join(", ") + " M") + "</td>" +
-        "<td>" + protoBadge(ps) + "</td>" +
         "<td>" + (pr.er ? h(pr.er.erNumber) : "—") + "</td>" +
         '<td style="white-space:nowrap"><button class="btn small" data-act="protocol-open" data-id="' + p.id + '">View</button> <a class="btn small" href="#/project/' + p.id + '">360°</a></td>' +
         "</tr>";
     }).join("");
-    return '<div class="toolbar"><div class="grow"></div><button class="btn primary" data-act="new-protocol">+ New Protocol</button></div>' +
+    var opts = [["", "All statuses"], ["DRAFT", "Draft"], ["UNDER_REVIEW", "Under review"], ["PENDING_GL", "Pending Group Leader"], ["CHANGES_REQUESTED", "Changes requested"], ["APPROVED", "Approved"]];
+    var sel = opts.map(function (o) { return '<option value="' + o[0] + '"' + (protoFilter === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("");
+    return '<div class="toolbar"><div><label class="fld">Status</label><select class="select" data-act="proto-filter" style="min-width:190px">' + sel + "</select></div>" +
+      '<div class="grow"></div><button class="btn primary" data-act="new-protocol">+ New Protocol</button></div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr>' +
-      "<th>Protocol No</th><th>Product</th><th>Code</th><th>Batch(es)</th><th>Time Points</th><th>Lifecycle Status</th><th>ER</th><th></th>" +
-      "</tr></thead><tbody>" + rows + "</tbody></table></div></div>";
+      "<th>Protocol No / Status</th><th>Product</th><th>Code</th><th>Batch(es)</th><th>Time Points</th><th>ER</th><th></th>" +
+      "</tr></thead><tbody>" + (rows || '<tr><td colspan="7"><div class="empty">No protocols for this status.</div></td></tr>') + "</tbody></table></div></div>";
   };
 
   VIEWS.products = function () {
@@ -1982,6 +1986,7 @@
   function onViewChange(e) {
     var t = e.target;
     if (t.matches("[data-act='month-select']")) { scheduleMonth = t.value; render(); return; }
+    if (t.matches("[data-act='proto-filter']")) { protoFilter = t.value; render(); return; }
     if (t.matches("[data-filter]")) { filters[t.getAttribute("data-filter")] = t.value; render(); return; }
     if (t.id === "csvFile" && t.files && t.files[0]) {
       var f = t.files[0];
