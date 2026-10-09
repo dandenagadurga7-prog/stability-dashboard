@@ -954,6 +954,15 @@
       }).join("");
     }
     var ap = (pr.approvals || []).map(function (a) { return h(a.level + " · " + a.action + (a.comment ? " — " + a.comment : "") + " · " + a.user + " · " + a.at); }).join("<br>");
+    function apUser(level, action) {
+      var list = (pr.approvals || []).filter(function (x) { return x.level === level && (!action || x.action === action); });
+      var a = list[list.length - 1];
+      return a ? (a.user + (a.at ? " · " + a.at : "")) : "";
+    }
+    var sigPrepared = apUser("Preparer") || (m.preparedBy || "—");
+    var sigReviewed = apUser("Reviewer", "approved") || "—";
+    var sigApprovedCrd = apUser("Group Leader", "approved") || "—";
+    var sigApprovedArd = "—";
     return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> <button class="btn" onclick="window.print()">Print / PDF</button></div>' +
       '<div class="report-preview">' +
       '<div class="rp-head"><div><h2 style="text-align:left">HETERO (R&amp;D)<br><small style="font-weight:400;font-size:11px;color:var(--muted)">KAZIPALLY</small></h2><div style="color:var(--muted);font-size:11px">STABILITY PROTOCOL</div></div>' +
@@ -984,7 +993,7 @@
         return '<th class="num">' + hHead(l) + "</th>";
       }).join("") + "</tr></thead><tbody>" + docSchedRows + "</tbody></table>" +
       '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>' +
-      '<div class="sign-grid" style="grid-template-columns:repeat(4,1fr)"><div class="s">Prepared By (Analyst)<br>' + h(m.preparedBy || "—") + '</div><div class="s">Reviewed By (ARD)<br>' + h(m.reviewedBy || "—") + '</div><div class="s">Approved By (CRD)<br>' + h(m.approvedBy || "—") + '</div><div class="s">Approved By (ARD)<br>' + h(m.approvedByArd || "—") + "</div></div>" +
+      '<div class="sign-grid" style="grid-template-columns:repeat(4,1fr)"><div class="s">Prepared By (Analyst)<br>' + h(sigPrepared) + '</div><div class="s">Reviewed By (ARD)<br>' + h(sigReviewed) + '</div><div class="s">Approved By (CRD)<br>' + h(sigApprovedCrd) + '</div><div class="s">Approved By (ARD)<br>' + h(sigApprovedArd) + "</div></div>" +
       (ap ? '<p class="muted" style="margin-top:10px">Approval history:<br>' + ap + "</p>" : "") +
       '<div class="rp-foot"><span>Format No: ' + h(m.formNo || "F-01-01/ARD015") + "</span><span>Status: " + h(ps) + "</span><span>Page 1 of 1</span></div>" +
       "</div>";
@@ -1433,13 +1442,8 @@
 
       '<div id="npSchedule"></div>' +
 
-      '<div class="eyebrow" style="margin-top:14px">Signatures</div>' +
-      '<div class="proto-grid" style="grid-template-columns:repeat(4,1fr);margin-top:6px">' +
-      '<div><label class="fld">Prepared By (Analyst)</label><input class="input" id="npPreparedBy" value="' + h(S.currentUser) + '" /></div>' +
-      '<div><label class="fld">Reviewed By (ARD)</label><input class="input" id="npReviewedBy" value="Dr. V. Sharma" /></div>' +
-      '<div><label class="fld">Approved By (CRD)</label><input class="input" id="npApprovedBy" value="Dr. L. Menon" /></div>' +
-      '<div><label class="fld">Approved By (ARD)</label><input class="input" id="npApprovedByArd" value="" /></div>' +
-      "</div>" +
+      '<div class="eyebrow" style="margin-top:14px">E-Signatures (automatic)</div>' +
+      '<p class="muted" style="font-size:12px;margin-top:4px"><strong>' + h(S.currentUser) + "</strong> will sign as <strong>Prepared By (Analyst)</strong> when this protocol is submitted. Reviewer and Approver names are captured automatically when they approve.</p>" +
 
       '<div style="margin-top:16px"><button class="btn primary" data-act="np-save">Create protocol (Draft)</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
       '<p class="muted" style="margin-top:10px">After creating, open the protocol and use <strong>Submit for review</strong> to send it for Reviewer and Group Leader sign-off.</p>' +
@@ -2107,7 +2111,7 @@
           drugSubstance: product, batch: batch, reason: reasons, reasonOther: val("npReasonOther"),
           sampleConditions: conds, sampleConditionOther: val("npCondOther"), studyAt: at, enclosures: enc, sampleType: sampleType,
           manufacturingLocation: val("npMfg"), stpNo: val("npStpNo"), projectCode: val("npCode"), dateIn: val("npDateIn"),
-          preparedBy: val("npPreparedBy") || S.currentUser, reviewedBy: val("npReviewedBy"), approvedBy: val("npApprovedBy"), approvedByArd: val("npApprovedByArd"),
+          preparedBy: S.currentUser, reviewedBy: "", approvedBy: "", approvedByArd: "",
           packing: { innermost: val("npPackInner"), middle: val("npPackMiddle"), outermost: val("npPackOuter") },
           schedule: readNpSchedule()
         }
