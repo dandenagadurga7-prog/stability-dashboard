@@ -1478,7 +1478,7 @@
     }).join("");
     el.innerHTML = '<div class="eyebrow" style="margin-top:14px">Schedule</div>' +
       '<div class="table-wrap"><table class="data sched"><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>" +
-      '<p class="muted" style="font-size:11px">Tick the boxes (\u2713 = Tests to be analysed; un-tick = X = Tests not to be analysed).</p>';
+      '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>';
   }
 
   function readNpSchedule() {
