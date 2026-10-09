@@ -1555,8 +1555,10 @@
 
   function approveAction(id, level, action, comment) {
     var pr = projectOf(id);
-    pr.approvals.push({ level: level, user: S.currentUser, role: level, action: action, at: stamp(), comment: comment || "" });
-    store.audit({ user: S.currentUser, action: action, entity: "protocol", entityId: protocolOf(id).protocolNo, note: level + " " + action });
+    var nameByLevel = { "Preparer": S.currentUser, "Reviewer": "Dr. V. Sharma", "Group Leader": "Dr. L. Menon" };
+    var who = nameByLevel[level] || S.currentUser;
+    pr.approvals.push({ level: level, user: who, role: level, action: action, at: stamp(), comment: comment || "" });
+    store.audit({ user: who, action: action, entity: "protocol", entityId: protocolOf(id).protocolNo, note: level + " " + action });
     store.save(); render();
   }
   function doErGenerate(id) {
