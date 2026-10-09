@@ -1564,6 +1564,17 @@
     store.audit({ user: who, action: action, entity: "protocol", entityId: protocolOf(id).protocolNo, note: level + " " + action });
     store.save(); render();
   }
+  function openChangesModal(id) {
+    var p = protocolOf(id);
+    var lvl = SD.lifecycle.protocolStatus(S, id) === "UNDER_REVIEW" ? "Reviewer" : "Group Leader";
+    openOverlay(drawerHead("Request Changes", (p ? p.protocolNo : "") + " · " + lvl) + '<div class="drawer-b">' +
+      '<label class="fld">What needs to be changed? (required)</label>' +
+      '<textarea class="input" id="pcComment" rows="4" placeholder="e.g. Add XRD at 6th month; correct Mfg Date; add Related compounds"></textarea>' +
+      '<div style="margin-top:14px"><button class="btn danger" data-act="proto-changes-save" data-id="' + id + '">Send back to Preparer</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
+      '<p class="muted" style="margin-top:10px">The protocol goes back to the Preparer with your comment; status becomes <strong>Changes requested</strong>.</p>' +
+      "</div>");
+  }
+
   function doErGenerate(id) {
     var p = protocolOf(id), pr = projectOf(id);
     if (!pr.packing) { alert("Pack the samples first."); return; }
@@ -1953,7 +1964,7 @@
     else if (act === "proto-submit") approveAction(id, "Preparer", "submitted", "Submitted for review");
     else if (act === "proto-review-approve") approveAction(id, "Reviewer", "approved", "Reviewed");
     else if (act === "proto-gl-approve") approveAction(id, "Group Leader", "approved", "Approved");
-    else if (act === "proto-changes") approveAction(id, SD.lifecycle.protocolStatus(S, id) === "UNDER_REVIEW" ? "Reviewer" : "Group Leader", "changes_requested", "Changes requested");
+    else if (act === "proto-changes") openChangesModal(id);
     else if (act === "ws-new") openWorksheet(null);
     else if (act === "ws-new-stp") openWorksheet(id);
     else if (act === "ep-new") openEarlyPull(null);
@@ -2143,6 +2154,14 @@
     else if (act === "ws-calc") wsCalc();
     else if (act === "ws-save") wsSave();
     else if (act === "ws-print") wsPrint();
+    else if (act === "proto-changes-save") {
+      var cEl = document.getElementById("pcComment");
+      var c = cEl ? String(cEl.value).trim() : "";
+      if (!c) { alert("Please enter what needs to be changed."); return; }
+      var lvl = SD.lifecycle.protocolStatus(S, id) === "UNDER_REVIEW" ? "Reviewer" : "Group Leader";
+      closeOverlay();
+      approveAction(id, lvl, "changes_requested", c);
+    }
     else if (act === "ep-save") epSave();
     else if (act === "ep-withdraw-save") epWithdrawSave(id);
     else if (act === "close-overlay") closeOverlay();
