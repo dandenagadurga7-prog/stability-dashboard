@@ -944,7 +944,9 @@
     if (m.schedule && m.schedule.rows && m.schedule.rows.length && m.schedule.rows[0].label !== undefined) {
       docCols = (m.schedule.cols && m.schedule.cols.length) ? m.schedule.cols : SCHED_ROWS;
       docSchedRows = m.schedule.rows.map(function (r) {
-        return "<tr><td>" + h(r.label) + "</td>" + (r.marks || []).map(function (mk) { return '<td class="num">' + (mk ? "\u2713" : "X") + "</td>"; }).join("") + "</tr>";
+        return "<tr><td>" + h(r.label) + "</td>" + (r.marks || []).map(function (mk) {
+          return '<td class="num">' + h(mk === true ? "\u2713" : mk === false ? "X" : (mk == null ? "" : mk)) + "</td>";
+        }).join("") + "</tr>";
       }).join("");
     } else {
       docSchedRows = SCHED_COLS.map(function (tp, ri) {
@@ -1455,7 +1457,10 @@
     var body = SCHED_COLS.map(function (tp, ri) {
       return "<tr><td>" + h(tp) + "</td>" + SCHED_ROWS.map(function (n, ci) {
         var def = ci < SCHED_DEFAULT_TICK;
-        return '<td class="num"><input type="checkbox" id="npSc_' + ri + "_" + ci + '"' + (def ? " checked" : "") + " /></td>";
+        return '<td class="num"><select class="select sched-sel" id="npSc_' + ri + "_" + ci + '">' +
+          '<option value="\u2713"' + (def ? " selected" : "") + ">\u2713</option>" +
+          '<option value="X"' + (!def ? " selected" : "") + ">X</option>" +
+          '<option value="@">@</option></select></td>';
       }).join("") + "</tr>";
     }).join("");
     el.innerHTML = '<div class="eyebrow" style="margin-top:14px">Schedule</div>' +
@@ -1471,7 +1476,7 @@
       otherTest: otherEl ? String(otherEl.value).trim() : "",
       waterText: waterEl ? String(waterEl.value).trim() : "",
       rows: SCHED_COLS.map(function (tp, ri) {
-        return { label: tp, marks: SCHED_ROWS.map(function (n, ci) { var el = document.getElementById("npSc_" + ri + "_" + ci); return !!(el && el.checked); }) };
+        return { label: tp, marks: SCHED_ROWS.map(function (n, ci) { var el = document.getElementById("npSc_" + ri + "_" + ci); return (el && el.value) ? el.value : "X"; }) };
       })
     };
   }

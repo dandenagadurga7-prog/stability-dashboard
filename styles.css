@@ -304,3 +304,6 @@ table.data td.wrap { white-space: normal; min-width: 180px; }
 table.sched th, table.sched td { padding: 5px 6px; font-size: 11.5px; white-space: normal; vertical-align: middle; }
 table.sched th { line-height: 1.2; }
 table.sched td.num, table.sched th.num { text-align: center; }
+
+/* Schedule cell dropdown */
+table.sched .sched-sel { padding: 2px 4px; font-size: 11px; width: 46px; min-width: 46px; }
