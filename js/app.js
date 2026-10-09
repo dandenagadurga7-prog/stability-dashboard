@@ -944,6 +944,13 @@
     var tpLabels = ["INITIAL"].concat((p.timePoints || []).map(function (m) { return nthMonth(m) + " month"; }));
     function schedRow(name, mark) { return "<tr><td>" + h(name) + "</td>" + tpLabels.map(function () { return '<td class="num">' + mark + "</td>"; }).join("") + "</tr>"; }
     var schedRows = (p.tests || []).map(function (t) { var d = SD.testById(t); return schedRow(d ? d.name : t, "\u2713"); }).join("") + schedRow("Enantiomeric purity by HPLC", "X") + schedRow("Other test", "X");
+    var docTpLabels = tpLabels, docSchedRows = schedRows;
+    if (m.schedule && m.schedule.rows && m.schedule.rows.length) {
+      docTpLabels = (m.schedule.cols && m.schedule.cols.length) ? m.schedule.cols : tpLabels;
+      docSchedRows = m.schedule.rows.map(function (r) {
+        return "<tr><td>" + h(r.test) + "</td>" + (r.marks || []).map(function (mk) { return '<td class="num">' + (mk ? "\u2713" : "X") + "</td>"; }).join("") + "</tr>";
+      }).join("");
+    }
     var ap = (pr.approvals || []).map(function (a) { return h(a.level + " · " + a.action + (a.comment ? " — " + a.comment : "") + " · " + a.user + " · " + a.at); }).join("<br>");
     return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> <button class="btn" onclick="window.print()">Print / PDF</button></div>' +
       '<div class="report-preview">' +
@@ -969,7 +976,7 @@
       "<tr><th>Packing</th><td>" + ((m.packing && typeof m.packing === "object") ? ("<strong>Innermost:</strong> " + h(m.packing.innermost || "") + "<br><strong>Middle:</strong> " + h(m.packing.middle || "") + "<br><strong>Outermost:</strong> " + h(m.packing.outermost || "")) : h(m.packing || p.pack)) + "</td></tr>" +
       "</tbody></table>" +
       '<h3 style="font-size:14px;margin-top:18px">Schedule</h3>' +
-      '<table><thead><tr><th>Test</th>' + tpLabels.map(function (l) { return '<th class="num">' + h(l) + "</th>"; }).join("") + "</tr></thead><tbody>" + schedRows + "</tbody></table>" +
+      '<table><thead><tr><th>Description</th>' + docTpLabels.map(function (l) { return '<th class="num">' + h(l) + "</th>"; }).join("") + "</tr></thead><tbody>" + docSchedRows + "</tbody></table>" +
       '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>' +
       '<div class="sign-grid"><div class="s">Prepared By<br>' + h(m.preparedBy || "—") + "</div><div class=\"s\">Reviewed By<br>" + h(m.reviewedBy || "—") + "</div><div class=\"s\">Approved By<br>" + h(m.approvedBy || "—") + "</div></div>" +
       (ap ? '<p class="muted" style="margin-top:10px">Approval history:<br>' + ap + "</p>" : "") +
@@ -1415,21 +1422,40 @@
     renderNpSchedule();
   }
 
-  function renderNpSchedule() {
-    var el = document.getElementById("npSchedule");
-    if (!el) return;
+  function npScheduleRows() {
     var tpEl = document.getElementById("npTp");
     var tps = String(tpEl ? tpEl.value : "").split(",").map(function (x) { return parseInt(x.trim(), 10); }).filter(function (n) { return n > 0; });
     if (!tps.length) tps = [1, 2, 3, 6, 9, 12];
+    var labels = ["INITIAL"].concat(tps.map(monthLabel));
     var sel = document.getElementById("npTests");
     var names = [];
     if (sel && sel.selectedOptions) names = Array.prototype.slice.call(sel.selectedOptions).map(function (o) { return o.textContent || o.value; });
-    var tpLabels = ["INITIAL"].concat(tps.map(monthLabel));
-    function row(name, mark) { return "<tr><td>" + h(name) + "</td>" + tpLabels.map(function () { return '<td class="num">' + mark + "</td>"; }).join("") + "</tr>"; }
-    var rows = names.map(function (n) { return row(n, "\u2713"); }).join("") + row("Enantiomeric purity by HPLC", "X") + row("Other test", "X");
+    return { labels: labels, names: names, all: names.concat(["Enantiomeric purity by HPLC", "Other test"]) };
+  }
+
+  function renderNpSchedule() {
+    var el = document.getElementById("npSchedule");
+    if (!el) return;
+    var s = npScheduleRows();
+    var rows = s.all.map(function (name, ri) {
+      var def = ri < s.names.length;
+      return "<tr><td>" + h(name) + "</td>" + s.labels.map(function (l, ci) {
+        return '<td class="num"><input type="checkbox" id="npSc_' + ri + "_" + ci + '"' + (def ? " checked" : "") + " /></td>";
+      }).join("") + "</tr>";
+    }).join("");
     el.innerHTML = '<div class="eyebrow" style="margin-top:14px">Schedule</div>' +
-      '<div class="table-wrap"><table class="data"><thead><tr><th>Test</th>' + tpLabels.map(function (l) { return '<th class="num">' + h(l) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
-      '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>';
+      '<div class="table-wrap"><table class="data"><thead><tr><th>Description</th>' + s.labels.map(function (l) { return '<th class="num">' + h(l) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      '<p class="muted" style="font-size:11px">Tick the boxes (\u2713 = Tests to be analysed; un-tick = X = Tests not to be analysed).</p>';
+  }
+
+  function readNpSchedule() {
+    var s = npScheduleRows();
+    return {
+      cols: s.labels,
+      rows: s.all.map(function (name, ri) {
+        return { test: name, marks: s.labels.map(function (l, ci) { var el = document.getElementById("npSc_" + ri + "_" + ci); return !!(el && el.checked); }) };
+      })
+    };
   }
 
   function openNewUser() {
@@ -2047,7 +2073,8 @@
           sampleConditions: conds, sampleConditionOther: val("npCondOther"), studyAt: at, enclosures: enc, sampleType: sampleType,
           manufacturingLocation: val("npMfg"), stpNo: val("npStpNo"), projectCode: val("npCode"), dateIn: val("npDateIn"),
           preparedBy: val("npPreparedBy") || S.currentUser, reviewedBy: val("npReviewedBy"), approvedBy: val("npApprovedBy"),
-          packing: { innermost: val("npPackInner"), middle: val("npPackMiddle"), outermost: val("npPackOuter") }
+          packing: { innermost: val("npPackInner"), middle: val("npPackMiddle"), outermost: val("npPackOuter") },
+          schedule: readNpSchedule()
         }
       };
       S.protocols.push(newProto);
