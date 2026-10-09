@@ -932,12 +932,13 @@
     var condList = ["A  40±2°C / 75±5% RH", "B  25±2°C / 60±5% RH", "C  5±3°C", "D  -20°C±5°C", "E  Extra samples loaded", "F  Any other (specify)"];
     var encList = ["A  Initial Certificate of Analysis", "B  Requested tests related documents", "C  Any other (specify)"];
     function has(arr, x) { return (arr || []).indexOf(x) >= 0 ? "\u2713" : ""; }
-    var reasonRows = reasonList.map(function (r) { return "<tr><td>" + h(r) + '</td><td class="num" style="width:50px">' + has(m.reason, r) + "</td></tr>"; }).join("");
-    var condRows = condList.map(function (c) { return "<tr><td>" + h(c) + '</td><td class="num" style="width:50px">' + has(m.sampleConditions, c) + "</td></tr>"; }).join("");
-    var encRows = encList.map(function (e) { return "<tr><td>" + h(e) + '</td><td class="num" style="width:50px">' + has(m.enclosures, e) + "</td></tr>"; }).join("");
-    var atCells = ["A", "B", "C", "D", "E", "F"].map(function (l) { return '<th style="text-align:center">' + l + '</th><td style="text-align:center">' + has(m.studyAt, l) + "</td>"; }).join("");
+    function li(list, item) { return '<li><span class="mark">' + has(list, item) + "</span> " + h(item) + "</li>"; }
     var sampleTypes = ["1  Lab sample", "2  Lab validation sample", "3  Others (specify)"];
-    var stRows = sampleTypes.map(function (s) { return "<tr><td>" + h(s) + '</td><td class="num" style="width:50px">' + ((m.sampleType || "1  Lab sample") === s ? "\u2713" : "") + "</td></tr>"; }).join("");
+    var reasonItems = reasonList.map(function (r) { return li(m.reason, r); }).join("");
+    var condItems = condList.map(function (c) { return li(m.sampleConditions, c); }).join("");
+    var encItems = encList.map(function (e) { return li(m.enclosures, e); }).join("");
+    var atItems = ["A", "B", "C", "D", "E", "F"].map(function (l) { return '<li><span class="mark">' + has(m.studyAt, l) + "</span> " + l + "</li>"; }).join("");
+    var stItems = sampleTypes.map(function (s) { return '<li><span class="mark">' + ((m.sampleType || "1  Lab sample") === s ? "\u2713" : "") + "</span> " + h(s) + "</li>"; }).join("");
     var testNames = (p.tests || []).map(function (t) { var d = SD.testById(t); return d ? d.name : t; }).join(", ");
     var ap = (pr.approvals || []).map(function (a) { return h(a.level + " · " + a.action + (a.comment ? " — " + a.comment : "") + " · " + a.user + " · " + a.at); }).join("<br>");
     return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> <button class="btn" onclick="window.print()">Print / PDF</button></div>' +
@@ -948,14 +949,16 @@
       "<tr><th>Form No.</th><td>" + h(m.formNo || "F-01-01/ARD015") + "</td><th>Effective Date</th><td>" + h(m.effectiveDate ? fmt(m.effectiveDate) : "—") + "</td></tr>" +
       "<tr><th>Department</th><td colspan=\"3\">" + h(m.department || "Analytical Research & Development") + "</td></tr>" +
       "<tr><th>Drug substance</th><td>" + h(p.product) + "</td><th>Project Code</th><td>" + h(p.productCode) + "</td></tr>" +
-      "<tr><th>Batch No.</th><td>" + h(p.batches.join(", ")) + "</td><th>Date in</th><td>" + h(m.dateIn ? fmt(m.dateIn) : "—") + "</td></tr>" +
+      "<tr><th>Batch No.</th><td>" + h(p.batches.join(", ")) + "</td><th>Mfg Date</th><td>" + h(m.dateIn ? fmt(m.dateIn) : "—") + "</td></tr>" +
       "<tr><th>Manufacturing location</th><td>" + h(m.manufacturingLocation || "—") + "</td><th>STP No.</th><td>" + h(m.stpNo || p.protocolNo) + "</td></tr>" +
       "</tbody></table>" +
-      '<table><thead><tr><th colspan="2">Reason(s) for Stability study [1 to 3]</th></tr></thead><tbody>' + reasonRows + (m.reasonOther ? "<tr><td>Others: " + h(m.reasonOther) + "</td><td></td></tr>" : "") + "</tbody></table>" +
-      '<table><thead><tr><th colspan="2">Sample details [1 to 3]</th></tr></thead><tbody>' + condRows + (m.sampleConditionOther ? "<tr><td>Any other: " + h(m.sampleConditionOther) + "</td><td></td></tr>" : "") + "</tbody></table>" +
-      '<table><tbody><tr><th colspan="12">Stability Study Required At</th></tr><tr>' + atCells + "</tr></tbody></table>" +
-      '<table><thead><tr><th colspan="2">Enclosures</th></tr></thead><tbody>' + encRows + "</tbody></table>" +
-      '<table><thead><tr><th colspan="2">Sample Details</th></tr></thead><tbody>' + stRows + "</tbody></table>" +
+      '<div class="proto-grid" style="margin:10px 0">' +
+      '<div class="proto-col"><div class="eyebrow">Reason(s) for Stability study [1 to 3]</div><ul class="proto-list">' + reasonItems + "</ul>" + (m.reasonOther ? '<div class="muted" style="font-size:11px">Others: ' + h(m.reasonOther) + "</div>" : "") +
+      '<div class="eyebrow" style="margin-top:10px">Enclosures</div><ul class="proto-list">' + encItems + "</ul></div>" +
+      '<div class="proto-col"><div class="eyebrow">Sample details [1 to 3]</div><ul class="proto-list">' + condItems + "</ul>" + (m.sampleConditionOther ? '<div class="muted" style="font-size:11px">Any other: ' + h(m.sampleConditionOther) + "</div>" : "") +
+      '<div class="eyebrow" style="margin-top:10px">Sample Details</div><ul class="proto-list">' + stItems + "</ul></div>" +
+      '<div class="proto-col"><div class="eyebrow">Stability Study Required At</div><ul class="proto-list">' + atItems + "</ul></div>" +
+      "</div>" +
       "<table><tbody>" +
       "<tr><th>Storage condition</th><td>" + h(p.storageCondition) + "</td></tr>" +
       "<tr><th>Time points</th><td>" + h((p.timePoints || []).join(", ") + " months") + "</td></tr>" +
@@ -1358,29 +1361,30 @@
       '<div><label class="fld">Manufacturing Location</label><input class="input" id="npMfg" value="Hetero Labs Limited, Unit-II, Kazipally" /></div>' +
       '<div><label class="fld">STP No.</label><input class="input" id="npStpNo" placeholder="e.g. AL-009-04" /></div>' +
       "</div>" +
-      '<div><label class="fld" style="margin-top:8px">Date in</label><input class="input" type="date" id="npDateIn" value="' + today() + '" /></div>' +
+      '<div><label class="fld" style="margin-top:8px">Mfg Date</label><input class="input" type="date" id="npDateIn" value="' + today() + '" /></div>' +
 
-      '<div class="eyebrow" style="margin-top:14px">Reason(s) for Stability study [1 to 3]</div>' +
+      '<div class="proto-grid" style="margin-top:14px">' +
+      '<div class="proto-col"><div class="eyebrow">Reason(s) for Stability study [1 to 3]</div>' +
       npCheck("npReason1", "1. New product", true) + npCheck("npReason2", "2. New process / polymorph", false) + npCheck("npReason3", "3. Others (specify)", false) +
       '<input class="input" id="npReasonOther" placeholder="Others — specify" style="margin-top:4px" />' +
-
-      '<div class="eyebrow" style="margin-top:14px">Sample details [1 to 3]</div>' +
+      '<div class="eyebrow" style="margin-top:12px">Enclosures</div>' +
+      npCheck("npEncA", "A  Initial Certificate of Analysis", true) + npCheck("npEncB", "B  Requested tests related documents", true) + npCheck("npEncC", "C  Any other (specify)", false) +
+      "</div>" +
+      '<div class="proto-col"><div class="eyebrow">Sample details [1 to 3]</div>' +
       npCheck("npCondA", "A  40±2°C / 75±5% RH", true) + npCheck("npCondB", "B  25±2°C / 60±5% RH", true) +
       npCheck("npCondC", "C  5±3°C", false) + npCheck("npCondD", "D  -20°C±5°C", false) +
       npCheck("npCondE", "E  Extra samples loaded", false) + npCheck("npCondF", "F  Any other (specify)", false) +
       '<input class="input" id="npCondOther" placeholder="Any other — specify" style="margin-top:4px" />' +
-
-      '<div class="eyebrow" style="margin-top:14px">Stability Study Required At</div>' +
-      npCheck("npAtA", "A", true) + npCheck("npAtB", "B", true) + npCheck("npAtC", "C", false) +
-      npCheck("npAtD", "D", false) + npCheck("npAtE", "E", true) + npCheck("npAtF", "F", true) +
-
-      '<div class="eyebrow" style="margin-top:14px">Enclosures</div>' +
-      npCheck("npEncA", "A  Initial Certificate of Analysis", true) + npCheck("npEncB", "B  Requested tests related documents", true) + npCheck("npEncC", "C  Any other (specify)", false) +
-
-      '<div class="eyebrow" style="margin-top:14px">Sample Details</div>' +
+      '<div class="eyebrow" style="margin-top:12px">Sample Details</div>' +
       '<label class="check" style="cursor:pointer"><input type="radio" name="npSampleType" id="npSampleType1" checked /> <div class="c-label">1  Lab sample</div></label>' +
       '<label class="check" style="cursor:pointer"><input type="radio" name="npSampleType" id="npSampleType2" /> <div class="c-label">2  Lab validation sample</div></label>' +
       '<label class="check" style="cursor:pointer"><input type="radio" name="npSampleType" id="npSampleType3" /> <div class="c-label">3  Others (specify)</div></label>' +
+      "</div>" +
+      '<div class="proto-col"><div class="eyebrow">Stability Study Required At</div>' +
+      npCheck("npAtA", "A", true) + npCheck("npAtB", "B", true) + npCheck("npAtC", "C", false) +
+      npCheck("npAtD", "D", false) + npCheck("npAtE", "E", true) + npCheck("npAtF", "F", true) +
+      "</div>" +
+      "</div>" +
 
       '<div class="eyebrow" style="margin-top:14px">Study design</div>' +
       '<label class="fld" style="margin-top:6px">Storage condition</label><input class="input" id="npCondition" value="25°C ± 2°C / 60% RH ± 5% RH" />' +

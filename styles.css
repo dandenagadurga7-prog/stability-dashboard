@@ -290,3 +290,12 @@ table.data td.wrap { white-space: normal; min-width: 180px; }
 
 .notice.info { background: var(--info-soft); border-color: #cfe0f0; color: #14507f; }
 .notice.info strong { color: #0f3f66; }
+
+/* ---------- Company protocol layout (side-by-side) ---------- */
+.proto-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.proto-col { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; background: var(--surface-2); }
+.proto-col .eyebrow { margin-bottom: 4px; }
+.proto-list { list-style: none; margin: 0; padding: 0; font-size: 12.5px; }
+.proto-list li { padding: 2px 0; display: flex; gap: 8px; }
+.proto-list .mark { width: 14px; display: inline-block; text-align: center; font-weight: 800; color: var(--success); }
+@media (max-width: 760px) { .proto-grid { grid-template-columns: 1fr; } }
