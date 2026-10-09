@@ -1434,11 +1434,11 @@
       '<div id="npSchedule"></div>' +
 
       '<div class="eyebrow" style="margin-top:14px">Signatures</div>' +
-      '<div class="grid-2" style="margin-top:6px">' +
+      '<div class="proto-grid" style="grid-template-columns:1fr 1fr 1fr;margin-top:6px">' +
       '<div><label class="fld">Prepared By</label><input class="input" id="npPreparedBy" value="' + h(S.currentUser) + '" /></div>' +
       '<div><label class="fld">Reviewed By</label><input class="input" id="npReviewedBy" value="Dr. V. Sharma" /></div>' +
+      '<div><label class="fld">Approved By (GL / DQA)</label><input class="input" id="npApprovedBy" value="Dr. L. Menon" /></div>' +
       "</div>" +
-      '<label class="fld" style="margin-top:8px">Approved By (Group Leader / DQA)</label><input class="input" id="npApprovedBy" value="Dr. L. Menon" />' +
 
       '<div style="margin-top:16px"><button class="btn primary" data-act="np-save">Create protocol (Draft)</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
       '<p class="muted" style="margin-top:10px">After creating, open the protocol and use <strong>Submit for review</strong> to send it for Reviewer and Group Leader sign-off.</p>' +
