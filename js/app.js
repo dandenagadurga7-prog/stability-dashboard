@@ -1370,6 +1370,26 @@
   var SCHED_DEFAULT_TICK = 6; /* first 6 rows default ticked, last 2 default X */
   function hHead(label) { return String(label).split("|").map(h).join("<br>"); }
 
+  /* derive the protocol tests from the Schedule (rows marked tick) */
+  function mapSchedTests() {
+    var out = [];
+    SCHED_ROWS.forEach(function (name, ci) {
+      var any = SCHED_COLS.some(function (tp, ri) { var el = document.getElementById("npSc_" + ri + "_" + ci); return el && el.value === "\u2713"; });
+      if (!any) return;
+      var re = null;
+      if (/description/i.test(name)) re = /description/i;
+      else if (/infrared|^ir/i.test(name)) re = /infrared|\bIR\b/i;
+      else if (/water|lod|tga/i.test(name)) re = /water|lod|loss on drying/i;
+      else if (/xrd/i.test(name)) re = /xrd/i;
+      else if (/related|impurity/i.test(name)) re = /related|impurity/i;
+      else if (/assay/i.test(name)) re = /assay/i;
+      if (!re) return;
+      var found = (S.testLibrary || []).filter(function (t) { return re.test(t.name); })[0];
+      if (found && out.indexOf(found.id) < 0) out.push(found.id);
+    });
+    return out;
+  }
+
   function npCheck(id, label, checked) {
     return '<label class="check" style="cursor:pointer"><input type="checkbox" id="' + id + '"' + (checked ? " checked" : "") + ' /> <div class="c-label">' + h(label) + "</div></label>";
   }
@@ -1413,13 +1433,7 @@
 
       '<div class="eyebrow" style="margin-top:14px">Study design</div>' +
       '<label class="fld" style="margin-top:6px">Storage condition</label><input class="input" id="npCondition" value="25°C ± 2°C / 60% RH ± 5% RH" />' +
-      '<div class="eyebrow" style="margin-top:14px">Packing</div>' +
-      '<label class="fld" style="margin-top:6px">Innermost</label><input class="input" id="npPackInner" value="The material should be packed in LDPE bag purged with nitrogen, twisted and tied with tag," />' +
-      '<label class="fld" style="margin-top:8px">Middle</label><input class="input" id="npPackMiddle" value="then that bag should be inserted in ALUM bag heat sealed under nitrogen purge." />' +
-      '<label class="fld" style="margin-top:8px">Outermost</label><input class="input" id="npPackOuter" value="Finally kept in HDPE container along with silica gel." />' +
       '<div id="npSchedule"></div>' +
-      '<label class="fld" style="margin-top:10px">Time points (months, comma separated)</label><input class="input" id="npTp" value="1,2,3,6,9,12" />' +
-      '<label class="fld" style="margin-top:10px">Tests (from STP)</label><select class="select" id="npTests" multiple size="6" style="height:auto">' + testOptions + "</select>" +
 
       '<div class="eyebrow" style="margin-top:14px">Signatures</div>' +
       '<div class="grid-2" style="margin-top:6px">' +
@@ -2057,10 +2071,9 @@
       var product = document.getElementById("npProduct").value.trim();
       var batch = document.getElementById("npBatch").value.trim();
       if (!product || !batch) { alert("Product and batch are required."); return; }
-      var tps = document.getElementById("npTp").value.split(",").map(function (x) { return parseInt(x.trim(), 10); }).filter(function (n) { return n > 0; });
-      if (!tps.length) tps = [1, 2, 3, 6];
-      var tests = Array.prototype.slice.call(document.getElementById("npTests").selectedOptions).map(function (o) { return o.value; });
-      if (!tests.length) { alert("Select at least one test."); return; }
+      var tps = [1, 2, 3, 6, 9, 12];
+      var tests = mapSchedTests();
+      if (!tests.length) tests = (S.testLibrary || []).slice(0, 6).map(function (t) { return t.id; });
       function chk(cid) { var el = document.getElementById(cid); return !!(el && el.checked); }
       function val(cid) { var el = document.getElementById(cid); return el ? String(el.value).trim() : ""; }
       var reasons = [];
