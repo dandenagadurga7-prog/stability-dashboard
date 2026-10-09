@@ -1349,6 +1349,8 @@
       "</div>");
   }
 
+  function monthLabel(m) { var s = ["th", "st", "nd", "rd"], v = m % 100; return m + (s[(v - 20) % 10] || s[v] || s[0]) + " month"; }
+
   function npCheck(id, label, checked) {
     return '<label class="check" style="cursor:pointer"><input type="checkbox" id="' + id + '"' + (checked ? " checked" : "") + ' /> <div class="c-label">' + h(label) + "</div></label>";
   }
@@ -1396,6 +1398,7 @@
       '<label class="fld" style="margin-top:6px">Innermost</label><input class="input" id="npPackInner" value="The material should be packed in LDPE bag purged with nitrogen, twisted and tied with tag," />' +
       '<label class="fld" style="margin-top:8px">Middle</label><input class="input" id="npPackMiddle" value="then that bag should be inserted in ALUM bag heat sealed under nitrogen purge." />' +
       '<label class="fld" style="margin-top:8px">Outermost</label><input class="input" id="npPackOuter" value="Finally kept in HDPE container along with silica gel." />' +
+      '<div id="npSchedule"></div>' +
       '<label class="fld" style="margin-top:10px">Time points (months, comma separated)</label><input class="input" id="npTp" value="1,2,3,6,9,12" />' +
       '<label class="fld" style="margin-top:10px">Tests (from STP)</label><select class="select" id="npTests" multiple size="6" style="height:auto">' + testOptions + "</select>" +
 
@@ -1409,6 +1412,24 @@
       '<div style="margin-top:16px"><button class="btn primary" data-act="np-save">Create protocol (Draft)</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
       '<p class="muted" style="margin-top:10px">After creating, open the protocol and use <strong>Submit for review</strong> to send it for Reviewer and Group Leader sign-off.</p>' +
       "</div>");
+    renderNpSchedule();
+  }
+
+  function renderNpSchedule() {
+    var el = document.getElementById("npSchedule");
+    if (!el) return;
+    var tpEl = document.getElementById("npTp");
+    var tps = String(tpEl ? tpEl.value : "").split(",").map(function (x) { return parseInt(x.trim(), 10); }).filter(function (n) { return n > 0; });
+    if (!tps.length) tps = [1, 2, 3, 6, 9, 12];
+    var sel = document.getElementById("npTests");
+    var names = [];
+    if (sel && sel.selectedOptions) names = Array.prototype.slice.call(sel.selectedOptions).map(function (o) { return o.textContent || o.value; });
+    var tpLabels = ["INITIAL"].concat(tps.map(monthLabel));
+    function row(name, mark) { return "<tr><td>" + h(name) + "</td>" + tpLabels.map(function () { return '<td class="num">' + mark + "</td>"; }).join("") + "</tr>"; }
+    var rows = names.map(function (n) { return row(n, "\u2713"); }).join("") + row("Enantiomeric purity by HPLC", "X") + row("Other test", "X");
+    el.innerHTML = '<div class="eyebrow" style="margin-top:14px">Schedule</div>' +
+      '<div class="table-wrap"><table class="data"><thead><tr><th>Test</th>' + tpLabels.map(function (l) { return '<th class="num">' + h(l) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>';
   }
 
   function openNewUser() {
@@ -2060,6 +2081,7 @@
     if (e.target && e.target.id === "wsStp") renderWsTests();
     if (e.target && e.target.id === "epSample") renderEpFields();
     if (e.target && (e.target.id === "epAdvance" || e.target.id === "epCustom")) recomputeEp();
+    if (e.target && (e.target.id === "npTp" || e.target.id === "npTests")) renderNpSchedule();
   }
 
   /* ---------- boot ---------- */
