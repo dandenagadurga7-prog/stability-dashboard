@@ -940,16 +940,15 @@
     var atItems = ["A", "B", "C", "D", "E", "F"].map(function (l) { return '<li><span class="mark">' + has(m.studyAt, l) + "</span> " + l + ".</li>"; }).join("");
     var stItems = sampleTypes.map(function (s) { return '<li><span class="mark">' + ((m.sampleType || "1  Lab sample") === s ? "\u2713" : "") + "</span> " + h(s) + "</li>"; }).join("");
     var testNames = (p.tests || []).map(function (t) { var d = SD.testById(t); return d ? d.name : t; }).join(", ");
-    var docTpLabels = SCHED_COLS, docSchedRows;
-    if (m.schedule && m.schedule.rows && m.schedule.rows.length) {
-      docTpLabels = (m.schedule.cols && m.schedule.cols.length) ? m.schedule.cols : SCHED_COLS;
+    var docCols = SCHED_ROWS, docSchedRows;
+    if (m.schedule && m.schedule.rows && m.schedule.rows.length && m.schedule.rows[0].label !== undefined) {
+      docCols = (m.schedule.cols && m.schedule.cols.length) ? m.schedule.cols : SCHED_ROWS;
       docSchedRows = m.schedule.rows.map(function (r) {
-        return "<tr><td>" + h(r.test) + "</td>" + (r.marks || []).map(function (mk) { return '<td class="num">' + (mk ? "\u2713" : "X") + "</td>"; }).join("") + "</tr>";
+        return "<tr><td>" + h(r.label) + "</td>" + (r.marks || []).map(function (mk) { return '<td class="num">' + (mk ? "\u2713" : "X") + "</td>"; }).join("") + "</tr>";
       }).join("");
     } else {
-      docSchedRows = SCHED_ROWS.map(function (name, ri) {
-        var mark = ri < SCHED_DEFAULT_TICK ? "\u2713" : "X";
-        return "<tr><td>" + h(name) + "</td>" + SCHED_COLS.map(function () { return '<td class="num">' + mark + "</td>"; }).join("") + "</tr>";
+      docSchedRows = SCHED_COLS.map(function (tp, ri) {
+        return "<tr><td>" + h(tp) + "</td>" + SCHED_ROWS.map(function (n, ci) { return '<td class="num">' + (ci < SCHED_DEFAULT_TICK ? "\u2713" : "X") + "</td>"; }).join("") + "</tr>";
       }).join("");
     }
     var ap = (pr.approvals || []).map(function (a) { return h(a.level + " · " + a.action + (a.comment ? " — " + a.comment : "") + " · " + a.user + " · " + a.at); }).join("<br>");
@@ -977,7 +976,7 @@
       "<tr><th>Packing</th><td>" + ((m.packing && typeof m.packing === "object") ? ("<strong>Innermost:</strong> " + h(m.packing.innermost || "") + "<br><strong>Middle:</strong> " + h(m.packing.middle || "") + "<br><strong>Outermost:</strong> " + h(m.packing.outermost || "")) : h(m.packing || p.pack)) + "</td></tr>" +
       "</tbody></table>" +
       '<h3 style="font-size:14px;margin-top:18px">Schedule</h3>' +
-      '<table><thead><tr><th>Description</th>' + docTpLabels.map(function (l) { return '<th class="num">' + h(l) + "</th>"; }).join("") + "</tr></thead><tbody>" + docSchedRows + "</tbody></table>" +
+      '<table><thead><tr><th>Schedule</th>' + docCols.map(function (l) { return '<th class="num">' + h(l) + "</th>"; }).join("") + "</tr></thead><tbody>" + docSchedRows + "</tbody></table>" +
       '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>' +
       '<div class="sign-grid"><div class="s">Prepared By<br>' + h(m.preparedBy || "—") + "</div><div class=\"s\">Reviewed By<br>" + h(m.reviewedBy || "—") + "</div><div class=\"s\">Approved By<br>" + h(m.approvedBy || "—") + "</div></div>" +
       (ap ? '<p class="muted" style="margin-top:10px">Approval history:<br>' + ap + "</p>" : "") +
@@ -1442,22 +1441,23 @@
   function renderNpSchedule() {
     var el = document.getElementById("npSchedule");
     if (!el) return;
-    var rows = SCHED_ROWS.map(function (name, ri) {
-      var def = ri < SCHED_DEFAULT_TICK;
-      return "<tr><td>" + h(name) + "</td>" + SCHED_COLS.map(function (l, ci) {
+    var head = "<tr><th>Schedule</th>" + SCHED_ROWS.map(function (n) { return '<th class="num">' + h(n) + "</th>"; }).join("") + "</tr>";
+    var body = SCHED_COLS.map(function (tp, ri) {
+      return "<tr><td>" + h(tp) + "</td>" + SCHED_ROWS.map(function (n, ci) {
+        var def = ci < SCHED_DEFAULT_TICK;
         return '<td class="num"><input type="checkbox" id="npSc_' + ri + "_" + ci + '"' + (def ? " checked" : "") + " /></td>";
       }).join("") + "</tr>";
     }).join("");
     el.innerHTML = '<div class="eyebrow" style="margin-top:14px">Schedule</div>' +
-      '<div class="table-wrap"><table class="data"><thead><tr><th>Description</th>' + SCHED_COLS.map(function (l) { return '<th class="num">' + h(l) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      '<div class="table-wrap"><table class="data"><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>" +
       '<p class="muted" style="font-size:11px">Tick the boxes (\u2713 = Tests to be analysed; un-tick = X = Tests not to be analysed).</p>';
   }
 
   function readNpSchedule() {
     return {
-      cols: SCHED_COLS,
-      rows: SCHED_ROWS.map(function (name, ri) {
-        return { test: name, marks: SCHED_COLS.map(function (l, ci) { var el = document.getElementById("npSc_" + ri + "_" + ci); return !!(el && el.checked); }) };
+      cols: SCHED_ROWS,
+      rows: SCHED_COLS.map(function (tp, ri) {
+        return { label: tp, marks: SCHED_ROWS.map(function (n, ci) { var el = document.getElementById("npSc_" + ri + "_" + ci); return !!(el && el.checked); }) };
       })
     };
   }
