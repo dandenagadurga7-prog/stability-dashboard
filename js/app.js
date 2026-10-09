@@ -940,15 +940,16 @@
     var atItems = ["A", "B", "C", "D", "E", "F"].map(function (l) { return '<li><span class="mark">' + has(m.studyAt, l) + "</span> " + l + ".</li>"; }).join("");
     var stItems = sampleTypes.map(function (s) { return '<li><span class="mark">' + ((m.sampleType || "1  Lab sample") === s ? "\u2713" : "") + "</span> " + h(s) + "</li>"; }).join("");
     var testNames = (p.tests || []).map(function (t) { var d = SD.testById(t); return d ? d.name : t; }).join(", ");
-    function nthMonth(m) { var suf = ["th", "st", "nd", "rd"], v = m % 100; return m + (suf[(v - 20) % 10] || suf[v] || suf[0]); }
-    var tpLabels = ["INITIAL"].concat((p.timePoints || []).map(function (m) { return nthMonth(m) + " month"; }));
-    function schedRow(name, mark) { return "<tr><td>" + h(name) + "</td>" + tpLabels.map(function () { return '<td class="num">' + mark + "</td>"; }).join("") + "</tr>"; }
-    var schedRows = (p.tests || []).map(function (t) { var d = SD.testById(t); return schedRow(d ? d.name : t, "\u2713"); }).join("") + schedRow("Enantiomeric purity by HPLC", "X") + schedRow("Other test", "X");
-    var docTpLabels = tpLabels, docSchedRows = schedRows;
+    var docTpLabels = SCHED_COLS, docSchedRows;
     if (m.schedule && m.schedule.rows && m.schedule.rows.length) {
-      docTpLabels = (m.schedule.cols && m.schedule.cols.length) ? m.schedule.cols : tpLabels;
+      docTpLabels = (m.schedule.cols && m.schedule.cols.length) ? m.schedule.cols : SCHED_COLS;
       docSchedRows = m.schedule.rows.map(function (r) {
         return "<tr><td>" + h(r.test) + "</td>" + (r.marks || []).map(function (mk) { return '<td class="num">' + (mk ? "\u2713" : "X") + "</td>"; }).join("") + "</tr>";
+      }).join("");
+    } else {
+      docSchedRows = SCHED_ROWS.map(function (name, ri) {
+        var mark = ri < SCHED_DEFAULT_TICK ? "\u2713" : "X";
+        return "<tr><td>" + h(name) + "</td>" + SCHED_COLS.map(function () { return '<td class="num">' + mark + "</td>"; }).join("") + "</tr>";
       }).join("");
     }
     var ap = (pr.approvals || []).map(function (a) { return h(a.level + " · " + a.action + (a.comment ? " — " + a.comment : "") + " · " + a.user + " · " + a.at); }).join("<br>");
@@ -1358,6 +1359,11 @@
 
   function monthLabel(m) { var s = ["th", "st", "nd", "rd"], v = m % 100; return m + (s[(v - 20) % 10] || s[v] || s[0]) + " month"; }
 
+  /* Company protocol Schedule template (page 4 of F-01-01/ARD015) */
+  var SCHED_ROWS = ["Description", "IR", "Water content / LOD/TGA", "XRD", "Related compounds by HPLC", "Assay", "Enantiomeric purity by HPLC", "Other test"];
+  var SCHED_COLS = ["INITIAL", "1st month", "2nd month", "3rd month", "6th month", "9th month", "12th month"];
+  var SCHED_DEFAULT_TICK = 6; /* first 6 rows default ticked, last 2 default X */
+
   function npCheck(id, label, checked) {
     return '<label class="check" style="cursor:pointer"><input type="checkbox" id="' + id + '"' + (checked ? " checked" : "") + ' /> <div class="c-label">' + h(label) + "</div></label>";
   }
@@ -1436,24 +1442,22 @@
   function renderNpSchedule() {
     var el = document.getElementById("npSchedule");
     if (!el) return;
-    var s = npScheduleRows();
-    var rows = s.all.map(function (name, ri) {
-      var def = ri < s.names.length;
-      return "<tr><td>" + h(name) + "</td>" + s.labels.map(function (l, ci) {
+    var rows = SCHED_ROWS.map(function (name, ri) {
+      var def = ri < SCHED_DEFAULT_TICK;
+      return "<tr><td>" + h(name) + "</td>" + SCHED_COLS.map(function (l, ci) {
         return '<td class="num"><input type="checkbox" id="npSc_' + ri + "_" + ci + '"' + (def ? " checked" : "") + " /></td>";
       }).join("") + "</tr>";
     }).join("");
     el.innerHTML = '<div class="eyebrow" style="margin-top:14px">Schedule</div>' +
-      '<div class="table-wrap"><table class="data"><thead><tr><th>Description</th>' + s.labels.map(function (l) { return '<th class="num">' + h(l) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
+      '<div class="table-wrap"><table class="data"><thead><tr><th>Description</th>' + SCHED_COLS.map(function (l) { return '<th class="num">' + h(l) + "</th>"; }).join("") + "</tr></thead><tbody>" + rows + "</tbody></table></div>" +
       '<p class="muted" style="font-size:11px">Tick the boxes (\u2713 = Tests to be analysed; un-tick = X = Tests not to be analysed).</p>';
   }
 
   function readNpSchedule() {
-    var s = npScheduleRows();
     return {
-      cols: s.labels,
-      rows: s.all.map(function (name, ri) {
-        return { test: name, marks: s.labels.map(function (l, ci) { var el = document.getElementById("npSc_" + ri + "_" + ci); return !!(el && el.checked); }) };
+      cols: SCHED_COLS,
+      rows: SCHED_ROWS.map(function (name, ri) {
+        return { test: name, marks: SCHED_COLS.map(function (l, ci) { var el = document.getElementById("npSc_" + ri + "_" + ci); return !!(el && el.checked); }) };
       })
     };
   }
