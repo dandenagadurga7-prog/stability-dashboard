@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Analysis Worksheet (example) — Trofinetide Assay</title>
+<style>
+  :root { --ink:#152230; --muted:#5c6b7a; --line:#cdd8e2; --soft:#f4f7fa; --accent:#0b6e6e; --success:#1c7a4c; --success-soft:#e6f4ec; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:#eef2f5; color:var(--ink); font-family:"Segoe UI",Arial,sans-serif; font-size:12.5px; line-height:1.5; }
+  .sheet { width: 900px; max-width: 100%; margin: 20px auto; background:#fff; padding: 26px 30px 34px; box-shadow: 0 4px 20px rgba(0,0,0,.12); }
+  .top { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid var(--accent); padding-bottom:8px; }
+  .top .org { font-family:Georgia,serif; font-size:15px; font-weight:700; }
+  .top .org small { display:block; font-weight:400; font-size:11px; color:var(--muted); font-family:inherit; }
+  .logo { border:1px solid var(--line); border-radius:4px; padding:5px 12px; font-family:Georgia,serif; font-weight:700; }
+  h1 { text-align:center; font-family:Georgia,serif; font-size:16px; letter-spacing:.5px; margin:12px 0 14px; }
+  table { width:100%; border-collapse:collapse; }
+  th,td { border:1px solid var(--line); padding:6px 8px; vertical-align:top; text-align:left; }
+  th { background:var(--soft); font-weight:600; }
+  .eyebrow { font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); font-weight:700; }
+  .block { margin-top:16px; }
+  .theory { background:var(--soft); border:1px solid var(--line); border-radius:6px; padding:10px 12px; }
+  .calc { font-family:ui-monospace,Consolas,monospace; font-size:12px; }
+  .result { margin-top:14px; border:1px solid var(--success-soft); background:var(--success-soft); color:var(--success); border-radius:8px; padding:12px 16px; font-weight:700; font-size:15px; display:flex; justify-content:space-between; align-items:center; }
+  .sign { display:grid; grid-template-columns:1fr 1fr 1fr; gap:24px; margin-top:34px; }
+  .sign div { border-top:1px solid var(--ink); padding-top:6px; font-size:11.5px; color:var(--muted); }
+  .note { margin-top:16px; background:#fbf1e0; border:1px solid #ecd6b4; color:#7a4c0c; padding:10px 12px; border-radius:6px; font-size:11px; }
+  @media print { body{background:#fff} .sheet{box-shadow:none;margin:0;width:auto;padding:0} .note{display:none} @page{size:A4;margin:14mm} }
+</style>
+</head>
+<body>
+<div class="sheet">
+  <div class="top">
+    <div class="org">HETERO (R&amp;D)<br><small>KAZIPALLY</small></div>
+    <div class="logo">HETERO</div>
+  </div>
+  <h1>ANALYSIS WORKSHEET — STABILITY</h1>
+
+  <table>
+    <tbody>
+      <tr><th>STP No.</th><td>HK-TP/IH-STP/TFD-05</td><th>Rev / Format</th><td>F-02-01/ARD015</td><th>Effective</th><td>26/11/2022</td></tr>
+      <tr><th>Product</th><td>TROFINETIDE (Drug substance)</td><th>Batch No.</th><td>HK-TFD/034</td><th>Condition</th><td>-20&deg;C N2 Pack</td></tr>
+      <tr><th>ER No.</th><td>ER-2026-000001</td><th>AR No.</th><td>AR-2026-000013</td><th>Time Point</th><td>1<sup>st</sup> Month</td></tr>
+      <tr><th>Analyst</th><td>A. Dhamodar</td><th>Date</th><td>05-Jul-2025</td><th>Instrument</th><td>HPLC</td></tr>
+    </tbody>
+  </table>
+
+  <div class="block">
+    <div class="eyebrow">Test selected from protocol</div>
+    <div style="font-weight:700;margin-top:4px">Assay by HPLC (% w/w, On anhydrous basis)</div>
+  </div>
+
+  <div class="block">
+    <div class="eyebrow">Method / theory (loaded from the STP — read only, analyst cannot edit)</div>
+    <div class="theory">
+      Assay by HPLC as per the approved STP HK-TP/IH-STP/TFD-05. The test solution and the standard
+      solution are chromatographed; the response of the major peak is measured and the content is
+      calculated against the standard on the anhydrous basis.
+      <div class="calc" style="margin-top:8px">Formula (from STP): <strong>Result = (Sample peak area / Standard peak area) &times; 100</strong></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <div class="eyebrow">Actual lab data (entered by analyst — only this is typed)</div>
+    <table>
+      <thead><tr><th>Parameter</th><th>Unit</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Sample peak area</td><td>—</td><td class="calc">100000</td></tr>
+        <tr><td>Standard peak area</td><td>—</td><td class="calc">100200</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="block">
+    <div class="eyebrow">System calculation</div>
+    <table>
+      <tbody>
+        <tr><th style="width:40%">Calculation</th><td class="calc">100000 &divide; 100200 &times; 100</td></tr>
+        <tr><th>Calculated result</th><td class="calc"><strong>99.8 % w/w</strong></td></tr>
+        <tr><th>Specification</th><td>Not less than 98.0 and not more than 102.0</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="result"><span>Result</span><span>99.8 % &nbsp;·&nbsp; PASS ✓</span></div>
+
+  <div class="sign">
+    <div>Analysed by &amp; date<br>&nbsp;</div>
+    <div>Reviewed by &amp; date<br>&nbsp;</div>
+    <div>Approved by &amp; date<br>&nbsp;</div>
+  </div>
+
+  <div class="note">
+    Worked example only, built from the Trofinetide Stability Report you supplied. The specification and
+    STP number are real; the two area values are example inputs and the formula is the DEMO formula in
+    the app (sampleArea &#247; stdArea &times; 100). When you supply the approved STP, its real theory and
+    formula replace these, and the analyst then enters only the actual weights/areas — the result and
+    PASS/FAIL are produced the same way. Print or "Save as PDF".
+  </div>
+</div>
+</body>
+</html>
