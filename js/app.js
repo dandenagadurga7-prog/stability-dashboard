@@ -957,7 +957,7 @@
       '<div class="eyebrow" style="margin-top:10px">Enclosures</div><ul class="proto-list">' + encItems + "</ul></div>" +
       '<div class="proto-col"><div class="eyebrow">Sample details [1 to 3]</div><ul class="proto-list">' + condItems + "</ul>" + (m.sampleConditionOther ? '<div class="muted" style="font-size:11px">Any other: ' + h(m.sampleConditionOther) + "</div>" : "") +
       '<div class="eyebrow" style="margin-top:10px">Sample Details</div><ul class="proto-list">' + stItems + "</ul></div>" +
-      '<div class="proto-col"><div class="eyebrow">Stability Study Required At</div><ul class="proto-list">' + atItems + "</ul></div>" +
+      '<div class="proto-col"><div class="eyebrow">Stability Study Required At</div><div style="font-size:13px;padding:6px 0">a. &nbsp;&nbsp; b. &nbsp;&nbsp; c. &nbsp;&nbsp; d. &nbsp;&nbsp; e. &nbsp;&nbsp; f.</div></div>' +
       "</div>" +
       "<table><tbody>" +
       "<tr><th>Storage condition</th><td>" + h(p.storageCondition) + "</td></tr>" +
@@ -1383,8 +1383,7 @@
       '<label class="check" style="cursor:pointer"><input type="radio" name="npSampleType" id="npSampleType3" /> <div class="c-label">3  Others (specify)</div></label>' +
       "</div>" +
       '<div class="proto-col"><div class="eyebrow">Stability Study Required At</div>' +
-      npCheck("npAtA", "A.", true) + npCheck("npAtB", "B.", true) + npCheck("npAtC", "C.", false) +
-      npCheck("npAtD", "D.", false) + npCheck("npAtE", "E.", true) + npCheck("npAtF", "F.", true) +
+      '<div style="padding:6px 0;font-size:13px">a. &nbsp;&nbsp; b. &nbsp;&nbsp; c. &nbsp;&nbsp; d. &nbsp;&nbsp; e. &nbsp;&nbsp; f.</div>' +
       "</div>" +
       "</div>" +
 
