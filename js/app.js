@@ -1431,8 +1431,6 @@
       "</div>" +
       "</div>" +
 
-      '<div class="eyebrow" style="margin-top:14px">Study design</div>' +
-      '<label class="fld" style="margin-top:6px">Storage condition</label><input class="input" id="npCondition" value="25°C ± 2°C / 60% RH ± 5% RH" />' +
       '<div id="npSchedule"></div>' +
 
       '<div class="eyebrow" style="margin-top:14px">Signatures</div>' +
@@ -2098,7 +2096,7 @@
       var newProto = {
         id: nid, protocolNo: SD.ids.next(S, "prot"), product: product,
         productCode: val("npCode") || "—", apiOrForm: "Drug substance",
-        storageCondition: val("npCondition") || "Not specified", humidity: "NA",
+        storageCondition: val("npCondition") || "25°C ± 2°C / 60% RH ± 5% RH", humidity: "NA",
         pack: [val("npPackInner"), val("npPackMiddle"), val("npPackOuter")].filter(Boolean).join(" ") || "Not specified", batches: [batch],
         timePoints: tps, tests: tests, effectiveDate: today(), version: "V1.0", status: "Active",
         reason: reasons.join("; ") || "—", projectCode: val("npCode") || "—",
