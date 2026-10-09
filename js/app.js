@@ -179,6 +179,7 @@
     if (name === "sample" && param) return { name: "sample", param: param };
     if (name === "project" && param) return { name: "project", param: param };
     if (name === "datasheet" && param) return { name: "datasheet", param: param };
+    if (name === "protocoldoc" && param) return { name: "protocoldoc", param: param };
     var valid = NAV.map(function (n) { return n[0]; });
     if (valid.indexOf(name) < 0) return { name: "dashboard", param: null };
     return { name: name, param: param };
@@ -209,12 +210,13 @@
     settings: ["Settings", "Rules, users and roles"],
     sample: ["Sample Detail", "Full sample record"],
     project: ["Project 360°", "One project, one lifecycle"],
-    datasheet: ["Stability Data Sheet", "Cumulative time-point results"]
+    datasheet: ["Stability Data Sheet", "Cumulative time-point results"],
+    protocoldoc: ["Stability Protocol", "Company format (F-01-01/ARD015)"]
   };
 
   function render() {
     route = parseHash();
-    var target = route.name === "sample" ? "samples" : (route.name === "project" || route.name === "datasheet" ? "protocols" : route.name);
+    var target = route.name === "sample" ? "samples" : ((route.name === "project" || route.name === "datasheet" || route.name === "protocoldoc") ? "protocols" : route.name);
     var title = TITLES[route.name] || ["Dashboard", ""];
     document.getElementById("pageTitle").textContent = title[0];
     document.getElementById("pageSub").textContent = title[1];
@@ -839,7 +841,7 @@
       var st = statusOf(s), ep = latestPull(s.sampleId);
       return "<tr><td>" + h(s.sampleId) + "</td><td>" + h(s.timePointLabel) + "</td><td>" + fmt(s.plannedWithdrawal) + "</td><td>" + (ep ? fmt(ep.requestedDate) : "—") + "</td><td>" + (s.actualWithdrawal ? fmt(s.actualWithdrawal) : "—") + "</td><td>" + (s.arNumber ? h(s.arNumber) : "—") + "</td><td>" + statusBadge(st.def) + "</td></tr>";
     }).join("");
-    return '<div class="toolbar"><a class="btn" href="#/protocols">← Protocols</a><a class="btn" href="#/datasheet/' + id + '">Stability Data Sheet</a><div class="grow"></div>' + nextActionHtml(id) + "</div>" +
+    return '<div class="toolbar"><a class="btn" href="#/protocols">← Protocols</a><a class="btn" href="#/protocoldoc/' + id + '">Protocol document</a><a class="btn" href="#/datasheet/' + id + '">Stability Data Sheet</a><div class="grow"></div>' + nextActionHtml(id) + "</div>" +
       '<div class="grid-2">' +
       '<div class="card"><div class="card-h"><h3>' + h(p.product) + '</h3><span class="hint">' + h(p.protocolNo) + '</span></div><div class="card-b"><dl class="meta">' +
       "<dt>Protocol ID</dt><dd>" + h(id) + "</dd>" +
@@ -919,6 +921,51 @@
       '<div class="notice info"><strong>Add-on, not a change.</strong> The official withdrawal date is never overwritten. An early pull is a separate request with its own approval and its own requested date (Official − Advance Days).</div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Request</th><th>Product</th><th>Batch</th><th>Condition</th><th>Time Point</th><th>Official Withdrawal</th><th>R&amp;D Early Pull</th><th>Advance</th><th>Status</th><th>Action</th></tr></thead><tbody>' +
       (rows || '<tr><td colspan="10"><div class="empty"><div class="big">No early-pull requests</div>Create one with the button above.</div></td></tr>') + "</tbody></table></div></div>";
+  };
+
+  VIEWS.protocoldoc = function (id) {
+    var p = protocolOf(id);
+    if (!p) return notFound();
+    var pr = projectOf(id), m = p.protocolMeta || {};
+    var ps = SD.lifecycle.protocolStatus(S, id);
+    var reasonList = ["1. New product", "2. New process / polymorph", "3. Others (specify)"];
+    var condList = ["A  40±2°C / 75±5% RH", "B  25±2°C / 60±5% RH", "C  5±3°C", "D  -20°C±5°C", "E  Extra samples loaded", "F  Any other (specify)"];
+    var encList = ["A  Initial Certificate of Analysis", "B  Requested tests related documents", "C  Any other (specify)"];
+    function has(arr, x) { return (arr || []).indexOf(x) >= 0 ? "\u2713" : ""; }
+    var reasonRows = reasonList.map(function (r) { return "<tr><td>" + h(r) + '</td><td class="num" style="width:50px">' + has(m.reason, r) + "</td></tr>"; }).join("");
+    var condRows = condList.map(function (c) { return "<tr><td>" + h(c) + '</td><td class="num" style="width:50px">' + has(m.sampleConditions, c) + "</td></tr>"; }).join("");
+    var encRows = encList.map(function (e) { return "<tr><td>" + h(e) + '</td><td class="num" style="width:50px">' + has(m.enclosures, e) + "</td></tr>"; }).join("");
+    var atCells = ["A", "B", "C", "D", "E", "F"].map(function (l) { return '<th style="text-align:center">' + l + '</th><td style="text-align:center">' + has(m.studyAt, l) + "</td>"; }).join("");
+    var sampleTypes = ["1  Lab sample", "2  Lab validation sample", "3  Others (specify)"];
+    var stRows = sampleTypes.map(function (s) { return "<tr><td>" + h(s) + '</td><td class="num" style="width:50px">' + ((m.sampleType || "1  Lab sample") === s ? "\u2713" : "") + "</td></tr>"; }).join("");
+    var testNames = (p.tests || []).map(function (t) { var d = SD.testById(t); return d ? d.name : t; }).join(", ");
+    var ap = (pr.approvals || []).map(function (a) { return h(a.level + " · " + a.action + (a.comment ? " — " + a.comment : "") + " · " + a.user + " · " + a.at); }).join("<br>");
+    return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> <button class="btn" onclick="window.print()">Print / PDF</button></div>' +
+      '<div class="report-preview">' +
+      '<div class="rp-head"><div><h2 style="text-align:left">HETERO (R&amp;D)<br><small style="font-weight:400;font-size:11px;color:var(--muted)">KAZIPALLY</small></h2><div style="color:var(--muted);font-size:11px">STABILITY PROTOCOL</div></div>' +
+      '<div style="text-align:right"><strong style="border:1px solid var(--line-strong);padding:4px 8px;border-radius:4px;font-family:var(--serif)">HETERO</strong></div></div>' +
+      "<table><tbody>" +
+      "<tr><th>Form No.</th><td>" + h(m.formNo || "F-01-01/ARD015") + "</td><th>Effective Date</th><td>" + h(m.effectiveDate ? fmt(m.effectiveDate) : "—") + "</td></tr>" +
+      "<tr><th>Department</th><td colspan=\"3\">" + h(m.department || "Analytical Research & Development") + "</td></tr>" +
+      "<tr><th>Drug substance</th><td>" + h(p.product) + "</td><th>Project Code</th><td>" + h(p.productCode) + "</td></tr>" +
+      "<tr><th>Batch No.</th><td>" + h(p.batches.join(", ")) + "</td><th>Date in</th><td>" + h(m.dateIn ? fmt(m.dateIn) : "—") + "</td></tr>" +
+      "<tr><th>Manufacturing location</th><td>" + h(m.manufacturingLocation || "—") + "</td><th>STP No.</th><td>" + h(m.stpNo || p.protocolNo) + "</td></tr>" +
+      "</tbody></table>" +
+      '<table><thead><tr><th colspan="2">Reason(s) for Stability study [1 to 3]</th></tr></thead><tbody>' + reasonRows + (m.reasonOther ? "<tr><td>Others: " + h(m.reasonOther) + "</td><td></td></tr>" : "") + "</tbody></table>" +
+      '<table><thead><tr><th colspan="2">Sample details [1 to 3]</th></tr></thead><tbody>' + condRows + (m.sampleConditionOther ? "<tr><td>Any other: " + h(m.sampleConditionOther) + "</td><td></td></tr>" : "") + "</tbody></table>" +
+      '<table><tbody><tr><th colspan="12">Stability Study Required At</th></tr><tr>' + atCells + "</tr></tbody></table>" +
+      '<table><thead><tr><th colspan="2">Enclosures</th></tr></thead><tbody>' + encRows + "</tbody></table>" +
+      '<table><thead><tr><th colspan="2">Sample Details</th></tr></thead><tbody>' + stRows + "</tbody></table>" +
+      "<table><tbody>" +
+      "<tr><th>Storage condition</th><td>" + h(p.storageCondition) + "</td></tr>" +
+      "<tr><th>Time points</th><td>" + h((p.timePoints || []).join(", ") + " months") + "</td></tr>" +
+      "<tr><th>Tests</th><td>" + h(testNames) + "</td></tr>" +
+      "<tr><th>Packing</th><td>" + h(m.packing || p.pack) + "</td></tr>" +
+      "</tbody></table>" +
+      '<div class="sign-grid"><div class="s">Prepared By<br>' + h(m.preparedBy || "—") + "</div><div class=\"s\">Reviewed By<br>" + h(m.reviewedBy || "—") + "</div><div class=\"s\">Approved By<br>" + h(m.approvedBy || "—") + "</div></div>" +
+      (ap ? '<p class="muted" style="margin-top:10px">Approval history:<br>' + ap + "</p>" : "") +
+      '<div class="rp-foot"><span>Format No: ' + h(m.formNo || "F-01-01/ARD015") + "</span><span>Status: " + h(ps) + "</span><span>Page 1 of 1</span></div>" +
+      "</div>";
   };
 
   function notFound() { return '<div class="card"><div class="empty"><div class="big">Record not found</div></div></div>'; }
@@ -1293,18 +1340,63 @@
       "</div>");
   }
 
+  function npCheck(id, label, checked) {
+    return '<label class="check" style="cursor:pointer"><input type="checkbox" id="' + id + '"' + (checked ? " checked" : "") + ' /> <div class="c-label">' + h(label) + "</div></label>";
+  }
+
   function openNewProtocol() {
-    var testOptions = S.testLibrary.map(function (t) { return '<option value="' + h(t.id) + '"' + (["tfd_description", "tfd_ir", "tfd_water", "tfd_pxrd", "tfd_assay", "tfd_total"].indexOf(t.id) >= 0 ? " selected" : "") + ">" + h(t.name) + "</option>"; }).join("");
-    openOverlay(drawerHead("New Stability Protocol", "auto-generated protocol ID") + '<div class="drawer-b">' +
-      '<label class="fld">Product name</label><input class="input" id="npProduct" placeholder="e.g. Trofinetide" />' +
-      '<label class="fld" style="margin-top:10px">Product code</label><input class="input" id="npCode" placeholder="e.g. TFD" />' +
-      '<label class="fld" style="margin-top:10px">Batch number</label><input class="input" id="npBatch" placeholder="e.g. HK-TFD/034" />' +
-      '<label class="fld" style="margin-top:10px">Stability condition</label><input class="input" id="npCondition" value="-20°C N2 Pack" />' +
-      '<label class="fld" style="margin-top:10px">Pack / container</label><input class="input" id="npPack" value="LDPE + Quad laminated aluminium + HDPE" />' +
+    var testOptions = S.testLibrary.map(function (t) { return '<option value="' + h(t.id) + '"' + (["anz_description", "anz_ir", "anz_water", "anz_assay", "anz_rel_total"].indexOf(t.id) >= 0 ? " selected" : "") + ">" + h(t.name) + "</option>"; }).join("");
+    openOverlay(drawerHead("New Stability Protocol", "Form F-01-01/ARD015 · Analytical Research & Development") + '<div class="drawer-b">' +
+      '<div class="notice info">Fill this in your company format. The protocol is created as <strong>DRAFT</strong>; after submission it goes to Reviewer then Group Leader sign-off.</div>' +
+      '<div class="eyebrow">Identification</div>' +
+      '<label class="fld" style="margin-top:6px">Drug substance</label><input class="input" id="npProduct" placeholder="e.g. Anastrozole" />' +
+      '<div class="grid-2" style="margin-top:8px">' +
+      '<div><label class="fld">Batch No.</label><input class="input" id="npBatch" placeholder="e.g. HL-ANA/01615" /></div>' +
+      '<div><label class="fld">Project Code</label><input class="input" id="npCode" placeholder="e.g. ANZ" /></div>' +
+      "</div>" +
+      '<div class="grid-2" style="margin-top:8px">' +
+      '<div><label class="fld">Manufacturing Location</label><input class="input" id="npMfg" value="Hetero Labs Limited, Unit-II, Kazipally" /></div>' +
+      '<div><label class="fld">STP No.</label><input class="input" id="npStpNo" placeholder="e.g. AL-009-04" /></div>' +
+      "</div>" +
+      '<div><label class="fld" style="margin-top:8px">Date in</label><input class="input" type="date" id="npDateIn" value="' + today() + '" /></div>' +
+
+      '<div class="eyebrow" style="margin-top:14px">Reason(s) for Stability study [1 to 3]</div>' +
+      npCheck("npReason1", "1. New product", true) + npCheck("npReason2", "2. New process / polymorph", false) + npCheck("npReason3", "3. Others (specify)", false) +
+      '<input class="input" id="npReasonOther" placeholder="Others — specify" style="margin-top:4px" />' +
+
+      '<div class="eyebrow" style="margin-top:14px">Sample details [1 to 3]</div>' +
+      npCheck("npCondA", "A  40±2°C / 75±5% RH", true) + npCheck("npCondB", "B  25±2°C / 60±5% RH", true) +
+      npCheck("npCondC", "C  5±3°C", false) + npCheck("npCondD", "D  -20°C±5°C", false) +
+      npCheck("npCondE", "E  Extra samples loaded", false) + npCheck("npCondF", "F  Any other (specify)", false) +
+      '<input class="input" id="npCondOther" placeholder="Any other — specify" style="margin-top:4px" />' +
+
+      '<div class="eyebrow" style="margin-top:14px">Stability Study Required At</div>' +
+      npCheck("npAtA", "A", true) + npCheck("npAtB", "B", true) + npCheck("npAtC", "C", false) +
+      npCheck("npAtD", "D", false) + npCheck("npAtE", "E", true) + npCheck("npAtF", "F", true) +
+
+      '<div class="eyebrow" style="margin-top:14px">Enclosures</div>' +
+      npCheck("npEncA", "A  Initial Certificate of Analysis", true) + npCheck("npEncB", "B  Requested tests related documents", true) + npCheck("npEncC", "C  Any other (specify)", false) +
+
+      '<div class="eyebrow" style="margin-top:14px">Sample Details</div>' +
+      '<label class="check" style="cursor:pointer"><input type="radio" name="npSampleType" id="npSampleType1" checked /> <div class="c-label">1  Lab sample</div></label>' +
+      '<label class="check" style="cursor:pointer"><input type="radio" name="npSampleType" id="npSampleType2" /> <div class="c-label">2  Lab validation sample</div></label>' +
+      '<label class="check" style="cursor:pointer"><input type="radio" name="npSampleType" id="npSampleType3" /> <div class="c-label">3  Others (specify)</div></label>' +
+
+      '<div class="eyebrow" style="margin-top:14px">Study design</div>' +
+      '<label class="fld" style="margin-top:6px">Storage condition</label><input class="input" id="npCondition" value="25°C ± 2°C / 60% RH ± 5% RH" />' +
+      '<label class="fld" style="margin-top:10px">Packing (innermost → outermost)</label><textarea class="input" id="npPack" rows="2">LDPE bag purged with nitrogen, twisted and tied with tag, inserted in ALUM bag heat sealed under nitrogen purge; finally kept in HDPE container along with silica gel.</textarea>' +
       '<label class="fld" style="margin-top:10px">Time points (months, comma separated)</label><input class="input" id="npTp" value="1,2,3,6,9,12" />' +
-      '<label class="fld" style="margin-top:10px">Tests</label><select class="select" id="npTests" multiple size="6" style="height:auto">' + testOptions + "</select>" +
-      '<div style="margin-top:16px"><button class="btn primary" data-act="np-save">Create protocol</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
-      '<p class="muted" style="margin-top:10px">Created as DRAFT. It then moves through Reviewer and Group Leader approval before packing.</p>' +
+      '<label class="fld" style="margin-top:10px">Tests (from STP)</label><select class="select" id="npTests" multiple size="6" style="height:auto">' + testOptions + "</select>" +
+
+      '<div class="eyebrow" style="margin-top:14px">Signatures</div>' +
+      '<div class="grid-2" style="margin-top:6px">' +
+      '<div><label class="fld">Prepared By</label><input class="input" id="npPreparedBy" value="' + h(S.currentUser) + '" /></div>' +
+      '<div><label class="fld">Reviewed By</label><input class="input" id="npReviewedBy" value="Dr. V. Sharma" /></div>' +
+      "</div>" +
+      '<label class="fld" style="margin-top:8px">Approved By (Group Leader / DQA)</label><input class="input" id="npApprovedBy" value="Dr. L. Menon" />' +
+
+      '<div style="margin-top:16px"><button class="btn primary" data-act="np-save">Create protocol (Draft)</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
+      '<p class="muted" style="margin-top:10px">After creating, open the protocol and use <strong>Submit for review</strong> to send it for Reviewer and Group Leader sign-off.</p>' +
       "</div>");
   }
 
@@ -1888,16 +1980,47 @@
       if (!tps.length) tps = [1, 2, 3, 6];
       var tests = Array.prototype.slice.call(document.getElementById("npTests").selectedOptions).map(function (o) { return o.value; });
       if (!tests.length) { alert("Select at least one test."); return; }
+      function chk(cid) { var el = document.getElementById(cid); return !!(el && el.checked); }
+      function val(cid) { var el = document.getElementById(cid); return el ? String(el.value).trim() : ""; }
+      var reasons = [];
+      if (chk("npReason1")) reasons.push("1. New product");
+      if (chk("npReason2")) reasons.push("2. New process / polymorph");
+      if (chk("npReason3")) reasons.push("3. Others (specify)");
+      var conds = [];
+      if (chk("npCondA")) conds.push("A  40±2°C / 75±5% RH");
+      if (chk("npCondB")) conds.push("B  25±2°C / 60±5% RH");
+      if (chk("npCondC")) conds.push("C  5±3°C");
+      if (chk("npCondD")) conds.push("D  -20°C±5°C");
+      if (chk("npCondE")) conds.push("E  Extra samples loaded");
+      if (chk("npCondF")) conds.push("F  Any other (specify)");
+      var at = [];
+      ["A", "B", "C", "D", "E", "F"].forEach(function (l) { if (chk("npAt" + l)) at.push(l); });
+      var enc = [];
+      if (chk("npEncA")) enc.push("A  Initial Certificate of Analysis");
+      if (chk("npEncB")) enc.push("B  Requested tests related documents");
+      if (chk("npEncC")) enc.push("C  Any other (specify)");
+      var sampleType = chk("npSampleType2") ? "2  Lab validation sample" : (chk("npSampleType3") ? "3  Others (specify)" : "1  Lab sample");
       var nid = "p" + Date.now();
-      S.protocols.push({
+      var newProto = {
         id: nid, protocolNo: SD.ids.next(S, "prot"), product: product,
-        productCode: document.getElementById("npCode").value.trim() || "—", apiOrForm: "Drug substance",
-        storageCondition: document.getElementById("npCondition").value.trim() || "Not specified", humidity: "NA",
-        pack: document.getElementById("npPack").value.trim() || "Not specified", batches: [batch],
-        timePoints: tps, tests: tests, effectiveDate: today(), version: "V1.0", status: "Active"
-      });
+        productCode: val("npCode") || "—", apiOrForm: "Drug substance",
+        storageCondition: val("npCondition") || "Not specified", humidity: "NA",
+        pack: val("npPack") || "Not specified", batches: [batch],
+        timePoints: tps, tests: tests, effectiveDate: today(), version: "V1.0", status: "Active",
+        reason: reasons.join("; ") || "—", projectCode: val("npCode") || "—",
+        manufacturingLocation: val("npMfg"), dateIn: val("npDateIn"),
+        protocolMeta: {
+          formNo: "F-01-01/ARD015", effectiveDate: "2022-11-26", department: "Analytical Research & Development",
+          drugSubstance: product, batch: batch, reason: reasons, reasonOther: val("npReasonOther"),
+          sampleConditions: conds, sampleConditionOther: val("npCondOther"), studyAt: at, enclosures: enc, sampleType: sampleType,
+          manufacturingLocation: val("npMfg"), stpNo: val("npStpNo"), projectCode: val("npCode"), dateIn: val("npDateIn"),
+          preparedBy: val("npPreparedBy") || S.currentUser, reviewedBy: val("npReviewedBy"), approvedBy: val("npApprovedBy"),
+          packing: val("npPack")
+        }
+      };
+      S.protocols.push(newProto);
       SD.lifecycle.ensure(S);
-      store.audit({ user: S.currentUser, action: "create", entity: "protocol", entityId: S.protocols[S.protocols.length - 1].protocolNo, note: "Protocol created" });
+      store.audit({ user: S.currentUser, action: "create", entity: "protocol", entityId: newProto.protocolNo, note: "Protocol created (company format, draft)" });
       store.save(); closeOverlay(); location.hash = "#/project/" + nid; render();
     } else if (act === "nu-save") {
       var uname = document.getElementById("nuName").value.trim();

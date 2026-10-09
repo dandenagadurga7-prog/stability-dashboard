@@ -126,6 +126,7 @@ goto("#/users", "Signed-in role");
 goto("#/protocols", "AL-009-04");
 goto("#/project/p0", "Lifecycle");
 goto("#/project/panz", "Lifecycle");
+goto("#/protocoldoc/panz", "Reason(s) for Stability study");
 goto("#/datasheet/panz", "Cumulative data sheet");
 goto("#/datasheet/p0", "Cumulative data sheet");
 goto("#/earlypull", "R&amp;D Early Pull");
@@ -209,6 +210,7 @@ else {
   if (!prn.loading) failures.push("loading not saved");
   if (gen.length !== 4) failures.push("schedule wrong: expected 4 samples (Initial + 3), got " + gen.length);
   console.log("  loading = " + (prn.loading && prn.loading.loadingId) + ", schedule = " + gen.length + " time points");
+  goto("#/protocoldoc/" + npid, "Reason(s) for Stability study");
 }
 
 /* AR No: generated automatically when analysis completes */
