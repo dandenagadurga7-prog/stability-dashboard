@@ -2179,6 +2179,8 @@
     if (!s) { alert("Sample not found."); return; }
     var d = document.getElementById("epwDate").value;
     if (!d) { alert("Actual withdrawal date is required."); return; }
+    if (ep.requestedDate && d < ep.requestedDate) { alert("Actual withdrawal date cannot be before the requested early-pull date (" + fmt(ep.requestedDate) + ")."); return; }
+    if (ep.officialDate && d > ep.officialDate) { alert("Actual withdrawal date cannot be after the official withdrawal date (" + fmt(ep.officialDate) + ")."); return; }
     store.updateSample(s.id, { actualWithdrawal: d }, S.currentUser);
     if (!s.analysisStart) store.updateSample(s.id, { analysisStart: d }, S.currentUser);
     ep.status = "WITHDRAWN"; ep.actualDate = d;
