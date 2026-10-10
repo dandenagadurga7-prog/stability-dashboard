@@ -1004,6 +1004,7 @@
       '<tr><th class="num" colspan="' + (docCols.length + 1) + '" style="text-align:center">' + h(condText(conds[0])) + "</th></tr>" +
       '<tr><th>Schedule</th>' + docCols.map(function (l) {
         if (l.indexOf("Water content") === 0) return '<th class="num">Water content /<br>' + h((m.schedule && m.schedule.waterText) ? m.schedule.waterText : "LOD / TGA") + "</th>";
+        if (l.indexOf("Related compounds") === 0) return '<th class="num">Related compounds /<br>' + h((m.schedule && m.schedule.relatedText) ? m.schedule.relatedText : "by HPLC") + "</th>";
         if (l === "Other test") return '<th class="num">Other test /<br>' + h((m.schedule && m.schedule.otherTest) ? m.schedule.otherTest : "") + "</th>";
         return '<th class="num">' + hHead(l) + "</th>";
       }).join("") + "</tr></thead><tbody>" + docSchedRows + "</tbody></table>" +
@@ -1483,6 +1484,7 @@
     var head = "<tr><th>Schedule</th>" + SCHED_ROWS.map(function (n) {
       var extra = "";
       if (n.indexOf("Water content") === 0) extra = '<br><input class="input" id="npWaterText" placeholder="type one" style="width:112px;margin-top:4px" />';
+      if (n.indexOf("Related compounds") === 0) extra = '<br><input class="input" id="npRelatedText" placeholder="type HPLC / GC" style="width:112px;margin-top:4px" />';
       if (n === "Other test") extra = ' /<br><input class="input" id="npOtherTest" placeholder="type purpose" style="width:112px;margin-top:4px" />';
       return '<th class="num">' + hHead(n) + extra + "</th>";
     }).join("") + "</tr>";
@@ -1503,10 +1505,12 @@
   function readNpSchedule() {
     var otherEl = document.getElementById("npOtherTest");
     var waterEl = document.getElementById("npWaterText");
+    var relEl = document.getElementById("npRelatedText");
     return {
       cols: SCHED_ROWS,
       otherTest: otherEl ? String(otherEl.value).trim() : "",
       waterText: waterEl ? String(waterEl.value).trim() : "",
+      relatedText: relEl ? String(relEl.value).trim() : "",
       rows: SCHED_COLS.map(function (tp, ri) {
         return { label: tp, marks: SCHED_ROWS.map(function (n, ci) { var el = document.getElementById("npSc_" + ri + "_" + ci); return (el && el.value) ? el.value : "X"; }) };
       })
