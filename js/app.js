@@ -1054,7 +1054,7 @@
     var p = protocolOf(id);
     if (!p) return;
     var pr = projectOf(id), ps = SD.lifecycle.protocolStatus(S, id);
-    var tests = p.tests.map(function (tid) { var t = testById(tid); return "<tr><td>" + (t.section ? '<span class="pill">' + h(t.section) + "</span> " : "") + h(t.name) + "</td><td>" + h(t.method) + "</td><td>" + h(t.specification) + "</td><td>" + h(t.unit || "—") + "</td></tr>"; }).join("");
+    var tests = p.tests.map(function (tid) { var t = testById(tid); return "<tr><td>" + (t.section ? '<span class="pill">' + h(t.section) + "</span> " : "") + h(t.name) + "</td><td>" + h(t.unit || "—") + "</td></tr>"; }).join("");
     var ap = (pr.approvals || []).map(function (a) {
       return '<div class="row"><div class="grow"><strong>' + h(a.level) + "</strong> · " + h(a.action) + (a.comment ? ' — <span class="muted">' + h(a.comment) + "</span>" : "") + '</div><div class="muted">' + h(a.user + " · " + a.at) + "</div></div>";
     }).join("");
@@ -1076,8 +1076,8 @@
       (actions ? '<div style="margin-top:14px">' + actions + "</div>" : "") +
       '<h3 class="section-title">Approval Workflow <span class="hint">Preparer → Reviewer → Group Leader</span></h3>' +
       '<div class="card"><div class="card-b list">' + (ap || '<div class="muted">Not submitted for review.</div>') + "</div></div>" +
-      '<h3 class="section-title">Tests &amp; Specifications <span class="hint">from the approved STP</span></h3>' +
-      '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Test</th><th>Method</th><th>Specification</th><th>Unit</th></tr></thead><tbody>' + (tests || '<tr><td colspan="4">None</td></tr>') + "</tbody></table></div></div>" +
+      '<h3 class="section-title">Tests <span class="hint">from the approved STP</span></h3>' +
+      '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Test</th><th>Unit</th></tr></thead><tbody>' + (tests || '<tr><td colspan="2">None</td></tr>') + "</tbody></table></div></div>" +
       "</div>");
   }
   function testById(id) { return SD.testById(id); }
