@@ -2162,7 +2162,10 @@
   function openEpWithdraw(id) {
     var ep = (S.pulls || []).filter(function (x) { return x.id === id; })[0];
     if (!ep) return;
-    var defDate = (ep.actualDate && (!ep.requestedDate || ep.actualDate >= ep.requestedDate)) ? ep.actualDate : (ep.requestedDate || ep.actualDate || today());
+    var minDate = ep.officialDate ? dates.addMonths(ep.officialDate, -1) : null;
+    var t = today();
+    var inRange = t && (!minDate || t >= minDate) && (!ep.officialDate || t <= ep.officialDate);
+    var defDate = ep.actualDate || (inRange ? t : (ep.requestedDate || t));
     openOverlay(drawerHead("Withdraw Sample (R&D Early Pull)", ep.id + " · " + ep.product) + '<div class="drawer-b">' +
       '<dl class="meta"><dt>Scheduled Withdrawal</dt><dd>' + fmt(ep.officialDate) + "</dd>" +
       "<dt>R&D Early Pull</dt><dd>" + fmt(ep.requestedDate) + "</dd>" +
@@ -2175,6 +2178,8 @@
       '<div style="margin-top:16px"><button class="btn primary" data-act="ep-withdraw-save" data-id="' + ep.id + '">' + (ep.actualDate ? "Save withdrawal date" : "Withdraw Sample") + '</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
       '<p class="muted" style="margin-top:10px">Any day from ' + fmt(ep.officialDate ? dates.addMonths(ep.officialDate, -1) : ep.requestedDate) + " to " + fmt(ep.officialDate) + " (up to 1 month before the official date). The official date is not changed.</p>" +
       "</div>");
+    var dEl = document.getElementById("epwDate");
+    if (dEl) dEl.value = defDate;
   }
 
   function epWithdrawSave(id) {

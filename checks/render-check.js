@@ -409,7 +409,32 @@ else {
   if (SD.lifecycle.project(S, crp.id).loading) failures.push("step Back did not clear loading");
   if (SD.lifecycle.samplesFor(S, crp.id).length !== 0) failures.push("step Back did not clear the schedule");
   else console.log("  step Back cleared loading + schedule");
-  global.confirm = function () { return false; };
+global.confirm = function () { return false; };
+
+/* Pulling now, with the official date inside the window, defaults the actual date to today */
+var nearS = SD.lifecycle.samplesFor(S, npid).filter(function (s) {
+  return !s.actualWithdrawal && s.plannedWithdrawal >= SD.dates.todayISO() && s.plannedWithdrawal <= SD.dates.addDays(SD.dates.todayISO(), 30);
+})[0];
+if (nearS) {
+  click(viewClick, { "data-act": "ep-new" });
+  document.getElementById("epSample").value = nearS.sampleId;
+  change(ids["overlayRoot"]._h.change[0], "epSample");
+  document.getElementById("epAdvance").value = "10";
+  change(ids["overlayRoot"]._h.change[0], "epAdvance");
+  document.getElementById("epReason").value = "due-window pull";
+  click(overlayClick, { "data-act": "ep-save" });
+  var nep = S.pulls[0];
+  click(viewClick, { "data-act": "ep-reviewer-approve", "data-id": nep.id });
+  click(viewClick, { "data-act": "ep-gl-approve", "data-id": nep.id });
+  click(viewClick, { "data-act": "ep-withdraw", "data-id": nep.id });
+  var defv = document.getElementById("epwDate").value;
+  if (defv !== SD.dates.todayISO()) failures.push("withdraw date default should be today, got " + defv);
+  else console.log("  withdraw date defaults to today (" + defv + ")");
+  click(overlayClick, { "data-act": "close-overlay" });
+} else {
+  console.log("  (no sample inside the withdrawal window to test today-default)");
+}
+
 }
 
 function finish() {
