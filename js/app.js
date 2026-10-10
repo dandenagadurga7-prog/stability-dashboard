@@ -1009,8 +1009,7 @@
       '<div class="rp-head"><div><h2 style="text-align:left">HETERO (R&amp;D)<br><small style="font-weight:400;font-size:11px;color:var(--muted)">KAZIPALLY</small></h2><div style="color:var(--muted);font-size:11px">STABILITY PROTOCOL</div></div>' +
       '<div style="text-align:right"><strong style="border:1px solid var(--line-strong);padding:4px 8px;border-radius:4px;font-family:var(--serif)">HETERO</strong></div></div>' +
       "<table><tbody>" +
-      "<tr><th>Form No.</th><td>" + h(m.formNo || "F-01-01/ARD015") + "</td><th>Effective Date</th><td>" + h(m.effectiveDate ? fmt(m.effectiveDate) : "—") + "</td></tr>" +
-      "<tr><th>Department</th><td colspan=\"3\">" + h(m.department || "Analytical Research & Development") + "</td></tr>" +
+      "<tr><th>Effective Date</th><td>" + h(m.effectiveDate ? fmt(m.effectiveDate) : "—") + "</td><th>Department</th><td>" + h(m.department || "Analytical Research & Development") + "</td></tr>" +
       "<tr><th>Drug substance</th><td>" + h(p.product) + "</td><th>Project Code</th><td>" + h(p.productCode) + "</td></tr>" +
       "<tr><th>Batch No.</th><td>" + h(p.batches.join(", ")) + "</td><th>Mfg Date</th><td>" + h(m.dateIn ? fmt(m.dateIn) : "—") + "</td></tr>" +
       "<tr><th>Manufacturing location</th><td>" + h(m.manufacturingLocation || "—") + "</td><th>STP No.</th><td>" + h(m.stpNo || p.protocolNo) + "</td></tr>" +
