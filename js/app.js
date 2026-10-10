@@ -1497,8 +1497,12 @@
 
   var NP_CONDS = [["npCondA", "40±2°C / 75±5% RH"], ["npCondB", "25±2°C / 60±5% RH"], ["npCondC", "5±3°C"], ["npCondD", "-20°C±5°C"], ["npCondE", "Extra samples loaded"], ["npCondF", "Any other (specify)"]];
 
+  function condTempOf(s) { var mm = String(s).match(/(-?\d{1,3})/); return mm ? parseInt(mm[1], 10) : 9999; }
+
   function npCondLabels() {
-    var labels = NP_CONDS.filter(function (p) { var c = document.getElementById(p[0]); return c && c.checked; }).map(function (p) { return p[1]; });
+    var pairs = NP_CONDS.filter(function (p) { var c = document.getElementById(p[0]); return c && c.checked; });
+    pairs.sort(function (a, b) { return condTempOf(a[1]) - condTempOf(b[1]); });
+    var labels = pairs.map(function (p) { return p[1]; });
     return labels.length ? labels : [""];
   }
 
