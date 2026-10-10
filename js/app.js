@@ -1531,7 +1531,12 @@
       }).join("");
       return '<table class="data sched" style="margin-top:12px"><thead>' + head + "</thead><tbody>" + body + "</tbody></table>";
     }).join("");
-    el.innerHTML = '<div class="table-wrap" style="margin-top:14px">' + tables + "</div>" +
+    var packingTable = '<table class="data sched" style="margin-top:12px"><thead><tr><th colspan="2">Packing</th></tr></thead><tbody>' +
+      '<tr><th>Innermost</th><td><input class="input" id="npPackInner" value="The material should be packed in LDPE bag purged with nitrogen, twisted and tied with tag," /></td></tr>' +
+      '<tr><th>Middle</th><td><input class="input" id="npPackMiddle" value="then that bag should be inserted in ALUM bag heat sealed under nitrogen purge." /></td></tr>' +
+      '<tr><th>Outermost</th><td><input class="input" id="npPackOuter" value="Finally kept in HDPE container along with silica gel." /></td></tr>' +
+      "</tbody></table>";
+    el.innerHTML = '<div class="table-wrap" style="margin-top:14px">' + packingTable + tables + "</div>" +
       '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>';
   }
 
