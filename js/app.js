@@ -2169,7 +2169,7 @@
       '<label class="fld" style="margin-top:10px">Sample ID</label><input class="input" id="epwSampleId" value="' + h(ep.sampleRef) + '" readonly />' +
       '<label class="fld" style="margin-top:10px">Remarks</label><input class="input" id="epwRemarks" />' +
       '<div style="margin-top:16px"><button class="btn primary" data-act="ep-withdraw-save" data-id="' + ep.id + '">' + (ep.actualDate ? "Save withdrawal date" : "Withdraw Sample") + '</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
-      '<p class="muted" style="margin-top:10px">Allowed range: ' + fmt(ep.requestedDate) + " to " + fmt(ep.officialDate) + ". The official date is not changed.</p>" +
+      '<p class="muted" style="margin-top:10px">Any day from ' + fmt(ep.officialDate ? dates.addMonths(ep.officialDate, -1) : ep.requestedDate) + " to " + fmt(ep.officialDate) + " (up to 1 month before the official date). The official date is not changed.</p>" +
       "</div>");
   }
 
@@ -2180,7 +2180,8 @@
     if (!s) { alert("Sample not found."); return; }
     var d = document.getElementById("epwDate").value;
     if (!d) { alert("Actual withdrawal date is required."); return; }
-    if (ep.requestedDate && d < ep.requestedDate) { alert("Actual withdrawal date cannot be before the requested early-pull date (" + fmt(ep.requestedDate) + ")."); return; }
+    var minDate = ep.officialDate ? dates.addMonths(ep.officialDate, -1) : ep.requestedDate;
+    if (minDate && d < minDate) { alert("Actual withdrawal date cannot be more than 1 month before the official date (" + fmt(minDate) + ")."); return; }
     if (ep.officialDate && d > ep.officialDate) { alert("Actual withdrawal date cannot be after the official withdrawal date (" + fmt(ep.officialDate) + ")."); return; }
     store.updateSample(s.id, { actualWithdrawal: d }, S.currentUser);
     if (!s.analysisStart) store.updateSample(s.id, { analysisStart: d }, S.currentUser);
