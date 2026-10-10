@@ -950,6 +950,10 @@
     function nthOrd(n) { return n + (n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"); }
     conds.sort(function (a, b) { return condTemp(a) - condTemp(b); });
     var condRowsHtml = "<tr><th>Storage condition</th><td>" + conds.map(function (c, i) { return h(nthOrd(i + 1) + ": " + condText(c)); }).join("<br>") + "</td></tr>";
+    var pk = (m.packing && typeof m.packing === "object") ? m.packing : {};
+    var packingHtml = "<strong>Innermost:</strong> " + h(pk.innermost || "The material should be packed in LDPE bag purged with nitrogen, twisted and tied with tag,") +
+      "<br><strong>Middle:</strong> " + h(pk.middle || "then that bag should be inserted in ALUM bag heat sealed under nitrogen purge.") +
+      "<br><strong>Outermost:</strong> " + h(pk.outermost || "Finally kept in HDPE container along with silica gel.");
     var docCols = SCHED_ROWS, docSchedRows;
     if (m.schedule && m.schedule.rows && m.schedule.rows.length && m.schedule.rows[0].label !== undefined) {
       docCols = (m.schedule.cols && m.schedule.cols.length) ? m.schedule.cols : SCHED_ROWS;
@@ -997,6 +1001,7 @@
       '<table><tbody>' +
       "<tr><th>Drug substance</th><td>" + h(p.product) + "</td><th>Batch No.</th><td>" + h(p.batches.join(", ")) + "</td></tr>" +
       "<tr><th>Storage condition</th><td>" + conds.map(function (c, i) { return h(nthOrd(i + 1) + ": " + condText(c)); }).join("<br>") + "</td><th>Date in</th><td>" + h(m.dateIn ? fmt(m.dateIn) : "—") + "</td></tr>" +
+      '<tr><th>Packing</th><td colspan="3">' + packingHtml + "</td></tr>" +
       "</tbody></table>" +
       '<table class="sched"><thead><tr><th>Schedule</th>' + docCols.map(function (l) {
         if (l.indexOf("Water content") === 0) return '<th class="num">Water content /<br>' + h((m.schedule && m.schedule.waterText) ? m.schedule.waterText : "LOD / TGA") + "</th>";
