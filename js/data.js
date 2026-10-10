@@ -419,6 +419,7 @@
         })
       };
     }
+    global.SD.buildStp = buildStp;
     var stps = PROTOCOLS.map(buildStp);
 
     /* R&D Early Pull / Advance Sample Withdrawal Requests — an ADD-ON to the

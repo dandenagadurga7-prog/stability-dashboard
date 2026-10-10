@@ -365,6 +365,8 @@ var crp = S.protocols[S.protocols.length - 1];
 if (!crp || crp.product !== "CR Drug") failures.push("CR protocol not created");
 else {
   var crNoBefore = crp.protocolNo;
+  if (!S.stps.some(function (x) { return x.id === crp.id; })) failures.push("no STP auto-built for the new protocol");
+  else console.log("  STP auto-built for new protocol " + crp.protocolNo);
   click(viewClick, { "data-act": "proto-submit", "data-id": crp.id });
   click(viewClick, { "data-act": "proto-changes", "data-id": crp.id });
   document.getElementById("pcComment").value = "Change packing details";

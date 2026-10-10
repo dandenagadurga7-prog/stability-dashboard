@@ -5,6 +5,7 @@
   var store = SD.store;
   var S = store.load(SD.seed);
   SD.lifecycle.ensure(S);
+  ensureStps();
   store.save();
 
   var filters = { search: "", product: "", batch: "", status: "", storage: "", analyst: "", timePoint: "" };
@@ -34,6 +35,14 @@
     var list = S.stps || [];
     for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
     return null;
+  }
+  /* Every protocol must have an STP so the worksheet loads method/theory automatically. */
+  function ensureStps() {
+    if (typeof SD.buildStp !== "function") return;
+    S.stps = S.stps || [];
+    var have = {};
+    S.stps.forEach(function (x) { if (x && x.id) have[x.id] = true; });
+    (S.protocols || []).forEach(function (p) { if (!have[p.id]) { S.stps.push(SD.buildStp(p)); have[p.id] = true; } });
   }
 
   /* ---------- R&D early pull (add-on; official date never changed) ---------- */
@@ -2483,7 +2492,7 @@
       var npParts = autoNo.split("-");
       var pcode = (f.code || "PROT").toUpperCase().replace(/[^A-Z0-9]/g, "") || "PROT";
       var protoNo = "STB-" + pcode + "-" + (npParts[2] || "") + "-" + (npParts[3] || "");
-      S.protocols.push({
+      var newProto = {
         id: nid, protocolNo: protoNo, product: f.product,
         productCode: f.code || "—", apiOrForm: "Drug substance",
         storageCondition: f.conditionText || "25°C ± 2°C / 60% RH ± 5% RH", humidity: "NA",
@@ -2493,7 +2502,9 @@
         reason: f.reasons.join("; ") || "—", projectCode: f.code || "—",
         manufacturingLocation: f.mfg, dateIn: f.dateIn,
         protocolMeta: f.meta
-      });
+      };
+      S.protocols.push(newProto);
+      if (typeof SD.buildStp === "function") (S.stps = S.stps || []).push(SD.buildStp(newProto));
       SD.lifecycle.ensure(S);
       store.audit({ user: S.currentUser, action: "create", entity: "protocol", entityId: protoNo, note: "Protocol created (company format, draft)" });
       store.save(); closeOverlay(); location.hash = "#/project/" + nid; render();
@@ -2522,6 +2533,13 @@
       um.schedule = up.schedule;
       store.audit({ user: S.currentUser, action: "update", entity: "protocol", entityId: upProto.protocolNo, note: "Protocol edited after change request" });
       closeOverlay();
+      if (typeof SD.buildStp === "function") {
+        S.stps = S.stps || [];
+        var stpIdx = -1;
+        S.stps.forEach(function (x, i) { if (x.id === upProto.id) stpIdx = i; });
+        var builtStp = SD.buildStp(upProto);
+        if (stpIdx >= 0) S.stps[stpIdx] = builtStp; else S.stps.push(builtStp);
+      }
       approveAction(id, "Preparer", "submitted", "Resubmitted after changes");
       location.hash = "#/protocoldoc/" + id; render();
     } else if (act === "nu-save") {
@@ -2588,7 +2606,7 @@
   if (SD.db && SD.db.enabled()) {
     setBackend("Connecting to Supabase…", false);
     SD.db.pull().then(function (remote) {
-      if (remote && remote.samples) { store.state = remote; S = remote; SD.lifecycle.ensure(S); store.save(); render(); }
+      if (remote && remote.samples) { store.state = remote; S = remote; SD.lifecycle.ensure(S); ensureStps(); store.save(); render(); }
       return SD.db.push(S);
     }).then(function () {
       dbConnected = true;
