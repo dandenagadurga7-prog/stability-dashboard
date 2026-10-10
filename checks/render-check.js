@@ -357,6 +357,7 @@ click(viewClick, { "data-act": "new-protocol" });
 document.getElementById("npProduct").value = "CR Drug";
 document.getElementById("npCode").value = "CR";
 document.getElementById("npBatch").value = "CR-001";
+document.getElementById("npStpNo").value = "ITB-STP/001";
 document.getElementById("npCondA").checked = true;
 document.getElementById("npCondB").checked = true;
 document.getElementById("npCondC").checked = true;
@@ -366,7 +367,11 @@ if (!crp || crp.product !== "CR Drug") failures.push("CR protocol not created");
 else {
   var crNoBefore = crp.protocolNo;
   if (!S.stps.some(function (x) { return x.id === crp.id; })) failures.push("no STP auto-built for the new protocol");
-  else console.log("  STP auto-built for new protocol " + crp.protocolNo);
+  else {
+    var crStp = S.stps.filter(function (x) { return x.id === crp.id; })[0];
+    if (crStp.stpNumber !== "ITB-STP/001") failures.push("STP number not taken from the protocol STP No.: " + crStp.stpNumber);
+    else console.log("  STP auto-built for new protocol -> STP No. " + crStp.stpNumber);
+  }
   click(viewClick, { "data-act": "proto-submit", "data-id": crp.id });
   click(viewClick, { "data-act": "proto-changes", "data-id": crp.id });
   document.getElementById("pcComment").value = "Change packing details";

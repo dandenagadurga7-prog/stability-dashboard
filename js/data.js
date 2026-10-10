@@ -400,7 +400,7 @@
      * "weights in -> PASS/FAIL out" path can be demonstrated. */
     function buildStp(p) {
       return {
-        id: p.id, stpNumber: p.protocolNo, version: p.version, effectiveDate: p.effectiveDate,
+        id: p.id, stpNumber: (p.protocolMeta && p.protocolMeta.stpNo) || p.protocolNo, version: p.version, effectiveDate: p.effectiveDate,
         status: "Approved", product: p.product,
         tests: p.tests.map(function (tid) {
           var t = testById(tid);

@@ -36,6 +36,7 @@
     for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
     return null;
   }
+  function stpNoOf(p) { return (p && p.protocolMeta && p.protocolMeta.stpNo) || (p && p.protocolNo) || "—"; }
   /* Every protocol must have an STP so the worksheet loads method/theory automatically. */
   function ensureStps() {
     if (typeof SD.buildStp !== "function") return;
@@ -829,8 +830,9 @@
 
   VIEWS.stp = function () {
     var rows = S.protocols.map(function (p) {
-      var tests = p.tests.map(function (t) { var d = SD.testById(t); return d ? d.name : t; });
-      return '<tr><td><strong>' + h(p.protocolNo) + "</strong></td><td>" + h(p.version) + "</td><td>" + h(fmt(p.effectiveDate)) + '</td><td class="wrap">' + h(p.product) + '</td><td class="num">' + p.tests.length + '</td><td><span class="badge tone-success"><span class="dot"></span>Approved</span></td><td><button class="btn small" data-act="protocol-open" data-id="' + p.id + '">View methods</button> <button class="btn small primary" data-act="ws-new-stp" data-id="' + p.id + '">Worksheet</button></td></tr>';
+      var sp = stpFor(p.id);
+      var stpNo = (sp && sp.stpNumber) || (p.protocolMeta && p.protocolMeta.stpNo) || p.protocolNo;
+      return '<tr><td><strong>' + h(stpNo) + "</strong></td><td>" + h(p.version) + "</td><td>" + h(fmt(p.effectiveDate)) + '</td><td class="wrap">' + h(p.product) + '</td><td class="num">' + p.tests.length + '</td><td><span class="badge tone-success"><span class="dot"></span>Approved</span></td><td><button class="btn small" data-act="protocol-open" data-id="' + p.id + '">View methods</button> <button class="btn small primary" data-act="ws-new-stp" data-id="' + p.id + '">Worksheet</button></td></tr>';
     }).join("");
     return '<div class="toolbar"><div class="grow"></div><button class="btn primary" data-act="ws-new">+ New analysis worksheet (STP)</button></div>' +
       '<div class="notice"><strong>Read-only source control.</strong> In analysis the applicable STP loads automatically; the analyst cannot edit method text, only enter actual lab data. Historical records keep the exact STP version used.</div>' +
@@ -1361,7 +1363,7 @@
       '<div style="color:var(--muted);font-size:11px">STABILITY REPORT</div></div>' +
       '<div style="text-align:right"><strong style="border:1px solid var(--line-strong);padding:4px 8px;border-radius:4px;font-family:var(--serif)">HETERO</strong></div></div>' +
       "<table><tbody>" +
-      "<tr><th>Drug substance</th><td>" + h(s.product) + "</td><th>STP No.</th><td>" + h(s.protocolNo) + "</td><th>Date</th><td>" + h(fmt(studyDate)) + "</td></tr>" +
+      "<tr><th>Drug substance</th><td>" + h(s.product) + "</td><th>STP No.</th><td>" + h(stpNoOf(protocolOf(s.protocolId))) + "</td><th>Date</th><td>" + h(fmt(studyDate)) + "</td></tr>" +
       "<tr><th>Temperature</th><td>" + h(s.storageCondition) + "</td><th>Humidity</th><td>" + h(meta.humidity || "NA") + "</td><th>Batch No.</th><td>" + h(s.batch) + "</td></tr>" +
       "</tbody></table>" +
       '<table class="rp-matrix"><thead><tr><th style="width:42px">S. No</th>' + headCols + "</tr></thead><tbody>" + matrix + "</tbody></table>" +
