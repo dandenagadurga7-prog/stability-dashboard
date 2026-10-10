@@ -954,7 +954,15 @@
     var packingHtml = "<strong>Innermost:</strong> " + h(pk.innermost || "The material should be packed in LDPE bag purged with nitrogen, twisted and tied with tag,") +
       "<br><strong>Middle:</strong> " + h(pk.middle || "then that bag should be inserted in ALUM bag heat sealed under nitrogen purge.") +
       "<br><strong>Outermost:</strong> " + h(pk.outermost || "Finally kept in HDPE container along with silica gel.");
-    var docCols = SCHED_ROWS, docSchedRows;
+    function docHeadCells() {
+      return docCols.map(function (l) {
+        if (l.indexOf("Water content") === 0) return '<th class="num">Water content /<br>' + h((m.schedule && m.schedule.waterText) ? m.schedule.waterText : "LOD / TGA") + "</th>";
+        if (l.indexOf("Related compounds") === 0) return '<th class="num">Related compounds by<br>' + h((m.schedule && m.schedule.relatedText) ? m.schedule.relatedText : "—") + "</th>";
+        if (l === "Other test") return '<th class="num">Other test /<br>' + h((m.schedule && m.schedule.otherTest) ? m.schedule.otherTest : "") + "</th>";
+        return '<th class="num">' + hHead(l) + "</th>";
+      }).join("");
+    }
+    var docCols = SCHED_ROWS, docSchedRows, docSchedTables;
     if (m.schedule && m.schedule.rows && m.schedule.rows.length && m.schedule.rows[0].label !== undefined) {
       docCols = (m.schedule.cols && m.schedule.cols.length) ? m.schedule.cols : SCHED_ROWS;
       docSchedRows = m.schedule.rows.map(function (r) {
@@ -966,6 +974,22 @@
       docSchedRows = SCHED_COLS.map(function (tp, ri) {
         return "<tr><td>" + h(tp) + "</td>" + SCHED_ROWS.map(function (n, ci) { return '<td class="num">' + (ci < SCHED_DEFAULT_TICK ? "\u2713" : "X") + "</td>"; }).join("") + "</tr>";
       }).join("");
+    }
+    if (m.schedule && m.schedule.conditions && m.schedule.conditions.length) {
+      docSchedTables = m.schedule.conditions.map(function (cond) {
+        var rows = (cond.rows || []).map(function (r) {
+          return "<tr><td>" + h(r.label) + "</td>" + (r.marks || []).map(function (mk) {
+            return '<td class="num">' + h(mk === true ? "\u2713" : mk === false ? "X" : (mk == null ? "" : mk)) + "</td>";
+          }).join("") + "</tr>";
+        }).join("");
+        var head = (cond.label ? '<tr><th class="num" colspan="' + (docCols.length + 1) + '" style="text-align:center">' + h(cond.label) + "</th></tr>" : "") +
+          "<tr><th>Schedule</th>" + docHeadCells() + "</tr>";
+        return '<table class="sched" style="margin-top:12px"><thead>' + head + "</thead><tbody>" + rows + "</tbody></table>";
+      }).join("");
+    } else {
+      docSchedTables = '<table class="sched"><thead>' +
+        '<tr><th class="num" colspan="' + (docCols.length + 1) + '" style="text-align:center">' + h(condText(conds[0])) + "</th></tr>" +
+        "<tr><th>Schedule</th>" + docHeadCells() + "</tr></thead><tbody>" + docSchedRows + "</tbody></table>";
     }
     var ap = (pr.approvals || []).map(function (a) { return h(a.level + " · " + a.action + (a.comment ? " — " + a.comment : "") + " · " + a.user + " · " + a.at); }).join("<br>");
     function apUser(level, action) {
@@ -1000,14 +1024,7 @@
       '<table style="margin-top:10px"><tbody>' +
       "<tr><th>Packing</th><td>" + packingHtml + "</td></tr>" +
       "</tbody></table>" +
-      '<table class="sched"><thead>' +
-      '<tr><th class="num" colspan="' + (docCols.length + 1) + '" style="text-align:center">' + h(condText(conds[0])) + "</th></tr>" +
-      '<tr><th>Schedule</th>' + docCols.map(function (l) {
-        if (l.indexOf("Water content") === 0) return '<th class="num">Water content /<br>' + h((m.schedule && m.schedule.waterText) ? m.schedule.waterText : "LOD / TGA") + "</th>";
-        if (l.indexOf("Related compounds") === 0) return '<th class="num">Related compounds by<br>' + h((m.schedule && m.schedule.relatedText) ? m.schedule.relatedText : "—") + "</th>";
-        if (l === "Other test") return '<th class="num">Other test /<br>' + h((m.schedule && m.schedule.otherTest) ? m.schedule.otherTest : "") + "</th>";
-        return '<th class="num">' + hHead(l) + "</th>";
-      }).join("") + "</tr></thead><tbody>" + docSchedRows + "</tbody></table>" +
+      docSchedTables +
       '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>' +
       '<div class="sign-grid" style="grid-template-columns:repeat(4,1fr)"><div class="s">Prepared By (Analyst)<br>' + h(sigPrepared) + '</div><div class="s">Reviewed By (ARD)<br>' + h(sigReviewed) + '</div><div class="s">Approved By (CRD)<br>' + h(sigApprovedCrd) + '</div><div class="s">Approved By (ARD)<br>' + h(sigApprovedArd) + "</div></div>" +
       (ap ? '<p class="muted" style="margin-top:10px">Approval history:<br>' + ap + "</p>" : "") +
@@ -1478,29 +1495,41 @@
     return { labels: labels, names: names, all: names.concat(["Enantiomeric purity by HPLC", "Other test"]) };
   }
 
+  var NP_CONDS = [["npCondA", "40±2°C / 75±5% RH"], ["npCondB", "25±2°C / 60±5% RH"], ["npCondC", "5±3°C"], ["npCondD", "-20°C±5°C"], ["npCondE", "Extra samples loaded"], ["npCondF", "Any other (specify)"]];
+
+  function npCondLabels() {
+    var labels = NP_CONDS.filter(function (p) { var c = document.getElementById(p[0]); return c && c.checked; }).map(function (p) { return p[1]; });
+    return labels.length ? labels : [""];
+  }
+
   function renderNpSchedule() {
     var el = document.getElementById("npSchedule");
     if (!el) return;
-    var condPairs = [["npCondA", "40±2°C / 75±5% RH"], ["npCondB", "25±2°C / 60±5% RH"], ["npCondC", "5±3°C"], ["npCondD", "-20°C±5°C"], ["npCondE", "Extra samples loaded"], ["npCondF", "Any other (specify)"]];
-    var condLabels = condPairs.filter(function (p) { var el = document.getElementById(p[0]); return el && el.checked; }).map(function (p) { return p[1]; });
-    var head = '<tr><th class="num" colspan="' + (SCHED_ROWS.length + 1) + '" style="text-align:center">' + h(condLabels.join("   ·   ")) + "</th></tr>" +
-      "<tr><th>Schedule</th>" + SCHED_ROWS.map(function (n) {
-      var extra = "";
-      if (n.indexOf("Water content") === 0) extra = '<br><input class="input" id="npWaterText" placeholder="type one" style="width:112px;margin-top:4px" />';
-      if (n.indexOf("Related compounds") === 0) extra = '<br><input class="input" id="npRelatedText" placeholder="type HPLC / GC" style="width:112px;margin-top:4px" />';
-      if (n === "Other test") extra = ' /<br><input class="input" id="npOtherTest" placeholder="type purpose" style="width:112px;margin-top:4px" />';
-      return '<th class="num">' + hHead(n) + extra + "</th>";
-    }).join("") + "</tr>";
-    var body = SCHED_COLS.map(function (tp, ri) {
-      return "<tr><td>" + h(tp) + "</td>" + SCHED_ROWS.map(function (n, ci) {
-        var def = ci < SCHED_DEFAULT_TICK;
-        return '<td class="num"><select class="select sched-sel" id="npSc_' + ri + "_" + ci + '">' +
-          '<option value="\u2713"' + (def ? " selected" : "") + ">\u2713</option>" +
-          '<option value="X"' + (!def ? " selected" : "") + ">X</option>" +
-          '<option value="@">@</option></select></td>';
-      }).join("") + "</tr>";
+    var condLabels = npCondLabels();
+    var tables = condLabels.map(function (cond, ci) {
+      var headCells = SCHED_ROWS.map(function (n) {
+        var extra = "";
+        if (ci === 0) {
+          if (n.indexOf("Water content") === 0) extra = '<br><input class="input" id="npWaterText" placeholder="type one" style="width:112px;margin-top:4px" />';
+          if (n.indexOf("Related compounds") === 0) extra = '<br><input class="input" id="npRelatedText" placeholder="type HPLC / GC" style="width:112px;margin-top:4px" />';
+          if (n === "Other test") extra = ' /<br><input class="input" id="npOtherTest" placeholder="type purpose" style="width:112px;margin-top:4px" />';
+        }
+        return '<th class="num">' + hHead(n) + extra + "</th>";
+      }).join("");
+      var head = (cond ? '<tr><th class="num" colspan="' + (SCHED_ROWS.length + 1) + '" style="text-align:center">' + h(cond) + "</th></tr>" : "") +
+        "<tr><th>Schedule</th>" + headCells + "</tr>";
+      var body = SCHED_COLS.map(function (tp, ri) {
+        return "<tr><td>" + h(tp) + "</td>" + SCHED_ROWS.map(function (n, ti) {
+          var def = ti < SCHED_DEFAULT_TICK;
+          return '<td class="num"><select class="select sched-sel" id="npSc_' + ci + "_" + ri + "_" + ti + '">' +
+            '<option value="\u2713"' + (def ? " selected" : "") + ">\u2713</option>" +
+            '<option value="X"' + (!def ? " selected" : "") + ">X</option>" +
+            '<option value="@">@</option></select></td>';
+        }).join("") + "</tr>";
+      }).join("");
+      return '<table class="data sched" style="margin-top:12px"><thead>' + head + "</thead><tbody>" + body + "</tbody></table>";
     }).join("");
-    el.innerHTML = '<div class="table-wrap" style="margin-top:14px"><table class="data sched"><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>" +
+    el.innerHTML = '<div class="table-wrap" style="margin-top:14px">' + tables + "</div>" +
       '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>';
   }
 
@@ -1508,13 +1537,19 @@
     var otherEl = document.getElementById("npOtherTest");
     var waterEl = document.getElementById("npWaterText");
     var relEl = document.getElementById("npRelatedText");
+    var condLabels = npCondLabels();
     return {
       cols: SCHED_ROWS,
       otherTest: otherEl ? String(otherEl.value).trim() : "",
       waterText: waterEl ? String(waterEl.value).trim() : "",
       relatedText: relEl ? String(relEl.value).trim() : "",
-      rows: SCHED_COLS.map(function (tp, ri) {
-        return { label: tp, marks: SCHED_ROWS.map(function (n, ci) { var el = document.getElementById("npSc_" + ri + "_" + ci); return (el && el.value) ? el.value : "X"; }) };
+      conditions: condLabels.map(function (cond, ci) {
+        return {
+          label: cond,
+          rows: SCHED_COLS.map(function (tp, ri) {
+            return { label: tp, marks: SCHED_ROWS.map(function (n, ti) { var el = document.getElementById("npSc_" + ci + "_" + ri + "_" + ti); return (el && el.value) ? el.value : "X"; }) };
+          })
+        };
       })
     };
   }
