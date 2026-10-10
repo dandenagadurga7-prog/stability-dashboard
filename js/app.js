@@ -1973,11 +1973,11 @@
       html += '<div class="ws-theory"><span class="eyebrow">Method / theory (from STP — read only)</span><div>' + h(rec.theory || "Refer approved STP.") + "</div></div>";
       if (rec.variables && rec.variables.length) {
         rec.variables.forEach(function (v) {
-          html += '<label class="fld">' + h(v.label) + '</label><input class="input" id="ws_in_' + h(tid) + "_" + h(v.name) + '" value="' + h(raw[v.name] || "") + '" />';
+          html += '<label class="fld">' + h(v.label) + '</label><input class="input" id="ws_in_' + h(tid) + "_" + h(v.name) + '" placeholder="—" value="' + h(raw[v.name] || "") + '" />';
         });
         html += '<div class="muted" style="font-size:11px">Formula: <code>' + h(rec.formula) + "</code>" + (rec.formulaNote ? " — " + h(rec.formulaNote) : "") + "</div>";
       } else {
-        html += '<label class="fld">Result (enter actual)</label><input class="input" id="ws_in_' + h(tid) + '_result" value="' + h(raw.result || "") + '" />';
+        html += '<label class="fld">Result (enter actual)</label><input class="input" id="ws_in_' + h(tid) + '_result" placeholder="—" value="' + h(raw.result || "") + '" />';
       }
       html += '<div class="ws-spec">Specification: ' + h(t.specification) + "</div>";
       html += '<label class="fld" style="margin-top:8px">Chromatogram / instrument file (optional)</label><input class="input" type="file" id="ws_chrom_' + h(tid) + '" accept=".pdf,.png,.jpg,.jpeg,.csv,.xlsx,.xls,.txt" />';
