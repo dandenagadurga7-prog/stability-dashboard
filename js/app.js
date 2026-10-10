@@ -945,7 +945,7 @@
     var stItems = sampleTypes.map(function (s) { return '<li><span class="mark">' + ((m.sampleType || "1  Lab sample") === s ? "\u2713" : "") + "</span> " + h(s) + "</li>"; }).join("");
     var testNames = (p.tests || []).map(function (t) { var d = SD.testById(t); return d ? d.name : t; }).join(", ");
     var conds = (m.sampleConditions && m.sampleConditions.length) ? m.sampleConditions : [p.storageCondition];
-    var condRowsHtml = conds.map(function (c) { return "<tr><th>Storage condition</th><td>" + h(c) + "</td></tr>"; }).join("");
+    var condRowsHtml = "<tr><th>Storage condition</th><td>" + conds.map(function (c) { return h(c); }).join("<br>") + "</td></tr>";
     var docCols = SCHED_ROWS, docSchedRows;
     if (m.schedule && m.schedule.rows && m.schedule.rows.length && m.schedule.rows[0].label !== undefined) {
       docCols = (m.schedule.cols && m.schedule.cols.length) ? m.schedule.cols : SCHED_ROWS;
