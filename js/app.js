@@ -1055,12 +1055,20 @@
     var p = protocolOf(id);
     if (!p) return;
     var ps = SD.lifecycle.protocolStatus(S, id);
-    var done = ps === "UNDER_REVIEW" || ps === "PENDING_GL" || ps === "APPROVED";
-    var badge = done
-      ? '<span class="badge tone-success"><span class="dot"></span>Done</span>'
-      : '<span class="badge tone-warn"><span class="dot"></span>Pending</span>';
+    var analystDone = ps === "UNDER_REVIEW" || ps === "PENDING_GL" || ps === "APPROVED";
+    var reviewerDone = ps === "PENDING_GL" || ps === "APPROVED";
+    var glDone = ps === "APPROVED";
+    function signBadge(done) {
+      return done
+        ? '<span class="badge tone-success"><span class="dot"></span>Done</span>'
+        : '<span class="badge tone-warn"><span class="dot"></span>Pending</span>';
+    }
     openOverlay(drawerHead(p.protocolNo, p.product) + '<div class="drawer-b">' +
-      '<dl class="meta"><dt>Analyst Sign Off</dt><dd>' + badge + "</dd></dl>" +
+      '<dl class="meta">' +
+      "<dt>Analyst Sign Off</dt><dd>" + signBadge(analystDone) + "</dd>" +
+      "<dt>Reviewer</dt><dd>" + signBadge(reviewerDone) + "</dd>" +
+      "<dt>Group Leader</dt><dd>" + signBadge(glDone) + "</dd>" +
+      "</dl>" +
       "</div>");
   }
 
