@@ -2090,7 +2090,7 @@
       '<label class="fld" style="margin-top:10px">Reason for Early Pull</label><input class="input" id="epReason" />' +
       '<label class="fld" style="margin-top:10px">Requested By</label><input class="input" id="epBy" value="' + h(S.currentUser) + '" />' +
       '<label class="fld" style="margin-top:10px">Priority</label><select class="select" id="epPriority"><option>Normal</option><option>Urgent</option></select>' +
-      '<label class="fld" style="margin-top:10px">Remarks</label><input class="input" id="epRemarks" />';
+      '<label class="fld" style="margin-top:10px">Remarks</label><input class="input" id="epRemarks" placeholder="Optional — e.g. meeting/request reference, urgency reason" />';
   }
 
   function recomputeEp() {
