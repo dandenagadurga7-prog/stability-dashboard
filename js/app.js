@@ -999,9 +999,8 @@
       "</div>" +
       '<h3 style="font-size:14px;margin-top:18px">Schedule</h3>' +
       '<table><tbody>' +
-      "<tr><th>Drug substance</th><td>" + h(p.product) + "</td><th>Batch No.</th><td>" + h(p.batches.join(", ")) + "</td></tr>" +
-      "<tr><th>Storage condition</th><td>" + conds.map(function (c, i) { return h(nthOrd(i + 1) + ": " + condText(c)); }).join("<br>") + "</td><th>Date in</th><td>" + h(m.dateIn ? fmt(m.dateIn) : "—") + "</td></tr>" +
-      '<tr><th>Packing</th><td colspan="3">' + packingHtml + "</td></tr>" +
+      "<tr><th>Storage condition</th><td>" + conds.map(function (c, i) { return h(nthOrd(i + 1) + ": " + condText(c)); }).join("<br>") + "</td></tr>" +
+      "<tr><th>Packing</th><td>" + packingHtml + "</td></tr>" +
       "</tbody></table>" +
       '<table class="sched"><thead><tr><th>Schedule</th>' + docCols.map(function (l) {
         if (l.indexOf("Water content") === 0) return '<th class="num">Water content /<br>' + h((m.schedule && m.schedule.waterText) ? m.schedule.waterText : "LOD / TGA") + "</th>";
