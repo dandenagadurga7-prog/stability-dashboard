@@ -187,11 +187,11 @@ else {
   console.log("  protocol " + np.protocolNo + " -> " + pstatus);
 
   click(viewClick, { "data-act": "pack-open", "data-id": npid });
-  document.getElementById("pkContainer").value = "HDPE container";
-  document.getElementById("pkQty").value = "7 time points";
-  document.getElementById("pkDate").value = SD.dates.todayISO();
-  document.getElementById("pkBy").value = "tester";
-  document.getElementById("pkRemarks").value = "";
+  document.getElementById("pkContainer_0").value = "HDPE container";
+  document.getElementById("pkQty_0").value = "7 time points";
+  document.getElementById("pkDate_0").value = SD.dates.todayISO();
+  document.getElementById("pkBy_0").value = "tester";
+  document.getElementById("pkRemarks_0").value = "";
   click(overlayClick, { "data-act": "pack-save", "data-id": npid });
   var prn = SD.lifecycle.project(S, npid);
   if (!prn.packing) failures.push("packing not saved");
@@ -352,6 +352,11 @@ else {
   if (!crp.protocolMeta || !crp.protocolMeta.packing || crp.protocolMeta.packing.innermost !== "Corrected LDPE bag, nitrogen purged") failures.push("edited packing not saved");
   console.log("  after edit + resubmit -> " + crStatus2 + ", number unchanged = " + (crp.protocolNo === crNoBefore));
   goto("#/packing", "40±2°C / 75±5% RH, 25±2°C / 60±5% RH");
+  click(viewClick, { "data-act": "pack-open", "data-id": crp.id });
+  var pkHtml = ids["overlayRoot"].innerHTML;
+  if (pkHtml.indexOf("Condition 1") < 0 || pkHtml.indexOf("Condition 2") < 0) failures.push("packing drawer did not show all conditions");
+  else console.log("  packing drawer shows all " + crp.protocolMeta.sampleConditions.length + " conditions");
+  click(overlayClick, { "data-act": "close-overlay" });
 }
 
 function finish() {

@@ -67,12 +67,13 @@
     return '<span class="badge tone-' + PROTO_TONE(ps) + '"><span class="dot"></span>' + h(lbl) + "</span>";
   }
   /* Conditions come from the approved protocol's "Stability Study Required At" list, so packing stays in step with the protocol. */
-  function protocolConditions(p) {
+  function protocolConditionList(p) {
     var m = p.protocolMeta || {};
     var conds = m.sampleConditions;
-    if (conds && conds.length) return conds.map(function (c) { return String(c).replace(/^[A-F]\.\s*/, ""); }).join(", ");
-    return p.storageCondition || "—";
+    if (conds && conds.length) return conds.map(function (c) { return String(c).replace(/^[A-F]\.\s*/, ""); });
+    return [p.storageCondition || "—"];
   }
+  function protocolConditions(p) { return protocolConditionList(p).join(", "); }
   function nextActionHtml(id) {
     var na = SD.lifecycle.nextAction(S, id);
     var control = na.act
@@ -1371,15 +1372,25 @@
   function openPack(id) {
     var p = protocolOf(id), pr = projectOf(id);
     if (pr.packing) { alert("Already packed: " + pr.packing.packingId); return; }
+    var conds = protocolConditionList(p);
+    var pack = p.pack || "";
+    var tps = p.timePoints.join(", ") + " M";
+    var blocks = conds.map(function (cond, i) {
+      return '<table class="data sched" style="margin-top:12px"><thead><tr><th colspan="2" style="text-align:center">' + h("Condition " + (i + 1) + ": " + cond) + "</th></tr></thead><tbody>" +
+        "<tr><th>Product</th><td>" + h(p.product) + "</td></tr>" +
+        "<tr><th>Batch</th><td>" + h(p.batches.join(", ")) + "</td></tr>" +
+        "<tr><th>Pack</th><td>" + h(pack) + "</td></tr>" +
+        "<tr><th>Time Points</th><td>" + h(tps) + "</td></tr>" +
+        '<tr><th>Quantity packed</th><td><input class="input" id="pkQty_' + i + '" value="' + h(p.timePoints.length + 1 + " time points") + '" /></td></tr>' +
+        '<tr><th>Container / pack configuration</th><td><input class="input" id="pkContainer_' + i + '" value="' + h(pack) + '" /></td></tr>' +
+        '<tr><th>Packing date</th><td><input class="input" type="date" id="pkDate_' + i + '" value="' + today() + '" /></td></tr>' +
+        '<tr><th>Packed by</th><td><input class="input" id="pkBy_' + i + '" value="' + h(S.currentUser) + '" /></td></tr>' +
+        '<tr><th>Remarks</th><td><input class="input" id="pkRemarks_' + i + '" /></td></tr>' +
+        "</tbody></table>";
+    }).join("");
     openOverlay(drawerHead("Sample Packing", p.protocolNo + " · " + p.product) + '<div class="drawer-b">' +
-      '<div class="notice">Protocol, product, batch, condition, pack and time points are carried over automatically. Enter only the actual packing information.</div>' +
-      '<dl class="meta"><dt>Product</dt><dd>' + h(p.product) + '</dd><dt>Batch</dt><dd>' + h(p.batches.join(", ")) + '</dd><dt>Condition</dt><dd>' + h(p.storageCondition) + '</dd><dt>Pack</dt><dd>' + h(p.pack) + '</dd><dt>Time Points</dt><dd>' + h(p.timePoints.join(", ") + " M") + '</dd></dl>' +
-      '<label class="fld" style="margin-top:12px">Quantity packed</label><input class="input" id="pkQty" value="' + h(p.timePoints.length + 1 + " time points") + '" />' +
-      '<label class="fld" style="margin-top:10px">Container / pack configuration</label><input class="input" id="pkContainer" value="' + h(p.pack) + '" />' +
-      '<label class="fld" style="margin-top:10px">Packing date</label><input class="input" type="date" id="pkDate" value="' + today() + '" />' +
-      '<label class="fld" style="margin-top:10px">Packed by</label><input class="input" id="pkBy" value="' + h(S.currentUser) + '" />' +
-      '<label class="fld" style="margin-top:10px">Remarks</label><input class="input" id="pkRemarks" />' +
-      '<div style="margin-top:16px"><button class="btn primary" data-act="pack-save" data-id="' + id + '">Save packing & generate ER</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
+      blocks +
+      '<div style="margin-top:16px"><button class="btn primary" data-act="pack-save" data-id="' + id + '">Save packing &amp; generate ER</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
       "</div>");
   }
 
@@ -2237,10 +2248,25 @@
       store.save(); closeOverlay(); render();
     } else if (act === "pack-save") {
       var pk = protocolOf(id), pkr = projectOf(id);
-      var container = document.getElementById("pkContainer").value.trim();
-      if (!container) { alert("Container / pack configuration is required."); return; }
-      pkr.packing = { packingId: SD.ids.next(S, "pk"), quantity: document.getElementById("pkQty").value.trim() || "Not specified", container: container, date: document.getElementById("pkDate").value || today(), by: document.getElementById("pkBy").value.trim() || S.currentUser, remarks: document.getElementById("pkRemarks").value.trim() };
-      store.audit({ user: S.currentUser, action: "create", entity: "packing", entityId: pk.protocolNo, field: "packingId", oldValue: null, newValue: pkr.packing.packingId, note: "Sample packed" });
+      var pkConds = protocolConditionList(pk);
+      var pkRecords = pkConds.map(function (cond, i) {
+        function g(base) { var el = document.getElementById(base + "_" + i); return el ? String(el.value).trim() : ""; }
+        return {
+          condition: cond,
+          quantity: g("pkQty") || "Not specified",
+          container: g("pkContainer"),
+          date: g("pkDate") || today(),
+          by: g("pkBy") || S.currentUser,
+          remarks: g("pkRemarks")
+        };
+      });
+      if (pkRecords.some(function (r) { return !r.container; })) { alert("Container / pack configuration is required for every condition."); return; }
+      pkr.packing = {
+        packingId: SD.ids.next(S, "pk"),
+        quantity: pkRecords[0].quantity, container: pkRecords[0].container, date: pkRecords[0].date, by: pkRecords[0].by, remarks: pkRecords[0].remarks,
+        conditions: pkRecords
+      };
+      store.audit({ user: S.currentUser, action: "create", entity: "packing", entityId: pk.protocolNo, field: "packingId", oldValue: null, newValue: pkr.packing.packingId, note: "Sample packed (" + pkRecords.length + " condition(s))" });
       pkr.er = { erNumber: SD.ids.next(S, "er"), generatedAt: stamp() };
       store.audit({ user: S.currentUser, action: "generate", entity: "er", entityId: pkr.er.erNumber, note: "Auto-generated from packing " + pkr.packing.packingId });
       store.save(); closeOverlay(); render();
