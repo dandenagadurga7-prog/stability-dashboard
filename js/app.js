@@ -940,7 +940,7 @@
       else if (ep.status === "REVIEWER_APPROVED") actions = '<button class="btn small primary" data-act="ep-gl-approve" data-id="' + ep.id + '">Group Leader approve</button> <button class="btn small danger" data-act="ep-reject" data-id="' + ep.id + '">Reject</button>';
       else if (ep.status === "APPROVED") actions = '<button class="btn small primary" data-act="ep-withdraw" data-id="' + ep.id + '">Withdraw sample</button>';
       else if (ep.status === "REJECTED") actions = '<span class="muted" title="' + h(ep.rejectReason || "") + '">' + h((ep.rejectReason || "Rejected").slice(0, 46)) + "</span>";
-      else actions = '<span class="muted">' + (ep.actualDate ? "Actual " + fmt(ep.actualDate) : "") + "</span>";
+      else actions = (ep.actualDate ? '<span class="muted">Actual ' + fmt(ep.actualDate) + "</span> " : "") + '<button class="btn small" data-act="ep-withdraw" data-id="' + ep.id + '">Correct date</button>';
       return "<tr><td><strong>" + h(ep.id) + '</strong><div class="muted" style="font-size:11px">' + h(ep.requestedBy + " · " + (ep.createdAt || "").slice(0, 16)) + "</div></td>" +
         '<td class="wrap">' + h(ep.product) + "</td><td>" + h(ep.batch) + '</td><td class="wrap">' + h(ep.condition) + "</td><td>" + h(ep.timePointLabel) + "</td>" +
         "<td>" + fmt(ep.officialDate) + "</td>" +
@@ -2158,17 +2158,18 @@
   function openEpWithdraw(id) {
     var ep = (S.pulls || []).filter(function (x) { return x.id === id; })[0];
     if (!ep) return;
+    var defDate = (ep.actualDate && (!ep.requestedDate || ep.actualDate >= ep.requestedDate)) ? ep.actualDate : (ep.requestedDate || ep.actualDate || today());
     openOverlay(drawerHead("Withdraw Sample (R&D Early Pull)", ep.id + " · " + ep.product) + '<div class="drawer-b">' +
       '<dl class="meta"><dt>Scheduled Withdrawal</dt><dd>' + fmt(ep.officialDate) + "</dd>" +
       "<dt>R&D Early Pull</dt><dd>" + fmt(ep.requestedDate) + "</dd>" +
       "<dt>Advance</dt><dd>" + ep.advanceDays + " days</dd></dl>" +
-      '<label class="fld" style="margin-top:10px">Actual Withdrawal Date</label><input class="input" type="date" id="epwDate" value="' + today() + '" />' +
+      '<label class="fld" style="margin-top:10px">Actual Withdrawal Date</label><input class="input" type="date" id="epwDate" value="' + h(defDate) + '" />' +
       '<label class="fld" style="margin-top:10px">Withdrawn By</label><input class="input" id="epwBy" value="' + h(S.currentUser) + '" />' +
       '<label class="fld" style="margin-top:10px">Quantity Withdrawn</label><input class="input" id="epwQty" />' +
       '<label class="fld" style="margin-top:10px">Sample ID</label><input class="input" id="epwSampleId" value="' + h(ep.sampleRef) + '" readonly />' +
       '<label class="fld" style="margin-top:10px">Remarks</label><input class="input" id="epwRemarks" />' +
-      '<div style="margin-top:16px"><button class="btn primary" data-act="ep-withdraw-save" data-id="' + ep.id + '">Withdraw Sample</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
-      '<p class="muted" style="margin-top:10px">Sets the Actual Withdrawal Date only. The official date (' + fmt(ep.officialDate) + ") is not changed.</p>" +
+      '<div style="margin-top:16px"><button class="btn primary" data-act="ep-withdraw-save" data-id="' + ep.id + '">' + (ep.actualDate ? "Save withdrawal date" : "Withdraw Sample") + '</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
+      '<p class="muted" style="margin-top:10px">Allowed range: ' + fmt(ep.requestedDate) + " to " + fmt(ep.officialDate) + ". The official date is not changed.</p>" +
       "</div>");
   }
 
