@@ -1027,7 +1027,7 @@
       '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>' +
       '<div class="sign-grid" style="grid-template-columns:repeat(4,1fr)"><div class="s">Prepared By (Analyst)<br>' + h(sigPrepared) + '</div><div class="s">Reviewed By (ARD)<br>' + h(sigReviewed) + '</div><div class="s">Approved By (CRD)<br>' + h(sigApprovedCrd) + '</div><div class="s">Approved By (ARD)<br>' + h(sigApprovedArd) + "</div></div>" +
       (ap ? '<p class="muted" style="margin-top:10px">Approval history:<br>' + ap + "</p>" : "") +
-      '<div class="rp-foot"><span>Format No: ' + h(m.formNo || "F-01-01/ARD015") + "</span><span>Status: " + h(ps) + "</span><span>Page 1 of 1</span></div>" +
+      '<div class="rp-foot"><span>Status: ' + h(ps) + "</span><span>Page 1 of 1</span></div>" +
       "</div>";
   };
 
