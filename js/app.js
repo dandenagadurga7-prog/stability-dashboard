@@ -2095,20 +2095,27 @@
     var box = document.getElementById("epFields");
     if (!s) { epCtx = { sample: null, official: null }; box.innerHTML = '<div class="muted">No sample available for early pull (all schedule items may already be withdrawn).</div>'; return; }
     epCtx = { sample: s, official: s.plannedWithdrawal };
-    var minReq = dates.addMonths(s.plannedWithdrawal, -1);
-    var defReq = dates.addDays(s.plannedWithdrawal, -10);
+    var prj = projectOf(s.protocolId);
+    var loadDate = (prj && prj.loading) ? prj.loading.date : null;
+    var off = s.plannedWithdrawal;
+    var minReq = dates.addDays(off, -30);
+    var maxReq = off;
+    var defReq = dates.addDays(off, -10);
     if (defReq < minReq) defReq = minReq;
-    var defAdv = dates.diffDays(defReq, s.plannedWithdrawal);
+    if (defReq > maxReq) defReq = maxReq;
+    var defAdv = dates.diffDays(defReq, off);
     box.innerHTML =
       '<dl class="meta"><dt>Protocol No</dt><dd>' + h(s.protocolNo) + "</dd>" +
       "<dt>Product</dt><dd>" + h(s.product) + "</dd>" +
       "<dt>Batch No</dt><dd>" + h(s.batch) + "</dd>" +
       "<dt>Stability Condition</dt><dd>" + h(s.storageCondition) + "</dd>" +
       "<dt>Time Point</dt><dd>" + h(s.timePointLabel) + "</dd>" +
+      "<dt>Load Date</dt><dd>" + (loadDate ? fmt(loadDate) : "—") + "</dd>" +
       "<dt>Official Withdrawal Date</dt><dd>" + fmt(s.plannedWithdrawal) + "</dd></dl>" +
       '<input type="hidden" id="epOfficial" value="' + h(s.plannedWithdrawal) + '" />' +
+      '<input type="hidden" id="epMin" value="' + h(minReq) + '" /><input type="hidden" id="epMax" value="' + h(maxReq) + '" />' +
       '<label class="fld" style="margin-top:10px">Early Pull Required</label><select class="select" id="epRequired"><option value="yes">Yes</option><option value="no">No</option></select>' +
-      '<label class="fld" style="margin-top:10px">Requested Pull Date (any day up to 1 month before official)</label><input class="input" type="date" id="epReqDate" value="' + h(defReq) + '" />' +
+      '<label class="fld" style="margin-top:10px">Requested Pull Date (same date, or up to 30 days / 1 month before official: ' + fmt(minReq) + " → " + fmt(maxReq) + ')</label><input class="input" type="date" id="epReqDate" min="' + h(minReq) + '" max="' + h(maxReq) + '" value="' + h(defReq) + '" />' +
       '<label class="fld" style="margin-top:10px">Advance (auto — days earlier than official)</label><input class="input" id="epAdvanceShow" readonly value="' + defAdv + '" />' +
       '<label class="fld" style="margin-top:10px">Reason for Early Pull</label><input class="input" id="epReason" />' +
       '<label class="fld" style="margin-top:10px">Requested By</label><input class="input" id="epBy" value="' + h(S.currentUser) + '" />' +
@@ -2137,14 +2144,14 @@
     if (!reason) { alert("Reason for early pull is required."); return; }
     if (!requested) { alert("Requested pull date is required."); return; }
     var official = epCtx.official || s.plannedWithdrawal;
-    var minReq = dates.addMonths(official, -1);
-    if (requested < minReq) { alert("Requested pull date cannot be more than 1 month before the official date (" + fmt(minReq) + ")."); return; }
-    if (requested > official) { alert("Requested pull date cannot be after the official date (" + fmt(official) + ")."); return; }
+    var minReq = dates.addDays(official, -30);
+    var maxReq = official;
+    if (requested < minReq || requested > maxReq) { alert("Requested pull date must be within 30 days (1 month) before the official date (" + fmt(minReq) + " to " + fmt(maxReq) + ")."); return; }
     var adv = dates.diffDays(requested, official);
     var ep = {
       id: SD.ids.next(S, "ep"), sampleRef: s.sampleId, sampleInternalId: s.id, protocolId: s.protocolId,
       product: s.product, batch: s.batch, condition: s.storageCondition, timePointLabel: s.timePointLabel,
-      officialDate: official, advanceDays: adv, requestedDate: requested,
+      officialDate: official, advanceDays: adv, requestedDate: requested, windowMin: minReq, windowMax: maxReq,
       reason: reason, requestedBy: document.getElementById("epBy").value.trim() || S.currentUser,
       priority: document.getElementById("epPriority").value, remarks: document.getElementById("epRemarks").value.trim(),
       status: "SUBMITTED", createdAt: stamp(),
@@ -2170,9 +2177,10 @@
   function openEpWithdraw(id) {
     var ep = (S.pulls || []).filter(function (x) { return x.id === id; })[0];
     if (!ep) return;
-    var minDate = ep.officialDate ? dates.addMonths(ep.officialDate, -1) : null;
+    var minDate = ep.windowMin || (ep.officialDate ? dates.addDays(ep.officialDate, -30) : null);
+    var maxDate = ep.windowMax || ep.officialDate;
     var t = today();
-    var inRange = t && (!minDate || t >= minDate) && (!ep.officialDate || t <= ep.officialDate);
+    var inRange = t && (!minDate || t >= minDate) && (!maxDate || t <= maxDate);
     var defDate = ep.actualDate || (inRange ? t : (ep.requestedDate || t));
     openOverlay(drawerHead("Withdraw Sample (R&D Early Pull)", ep.id + " · " + ep.product) + '<div class="drawer-b">' +
       '<dl class="meta"><dt>Scheduled Withdrawal</dt><dd>' + fmt(ep.officialDate) + "</dd>" +
@@ -2184,7 +2192,7 @@
       '<label class="fld" style="margin-top:10px">Sample ID</label><input class="input" id="epwSampleId" value="' + h(ep.sampleRef) + '" readonly />' +
       '<label class="fld" style="margin-top:10px">Remarks</label><input class="input" id="epwRemarks" />' +
       '<div style="margin-top:16px"><button class="btn primary" data-act="ep-withdraw-save" data-id="' + ep.id + '">' + (ep.actualDate ? "Save withdrawal date" : "Withdraw Sample") + '</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
-      '<p class="muted" style="margin-top:10px">Any day from ' + fmt(ep.officialDate ? dates.addMonths(ep.officialDate, -1) : ep.requestedDate) + " to " + fmt(ep.officialDate) + " (up to 1 month before the official date). The official date is not changed.</p>" +
+      '<p class="muted" style="margin-top:10px">Any day from ' + fmt(minDate) + " to " + fmt(maxDate) + " (1 day to 1 month after loading). The official date is not changed.</p>" +
       "</div>");
     var dEl = document.getElementById("epwDate");
     if (dEl) dEl.value = defDate;
@@ -2197,9 +2205,10 @@
     if (!s) { alert("Sample not found."); return; }
     var d = document.getElementById("epwDate").value;
     if (!d) { alert("Actual withdrawal date is required."); return; }
-    var minDate = ep.officialDate ? dates.addMonths(ep.officialDate, -1) : ep.requestedDate;
-    if (minDate && d < minDate) { alert("Actual withdrawal date cannot be more than 1 month before the official date (" + fmt(minDate) + ")."); return; }
-    if (ep.officialDate && d > ep.officialDate) { alert("Actual withdrawal date cannot be after the official withdrawal date (" + fmt(ep.officialDate) + ")."); return; }
+    var minDate = ep.windowMin || (ep.officialDate ? dates.addDays(ep.officialDate, -30) : ep.requestedDate);
+    var maxDate = ep.windowMax || ep.officialDate;
+    if (minDate && d < minDate) { alert("Actual withdrawal date cannot be before " + fmt(minDate) + "."); return; }
+    if (maxDate && d > maxDate) { alert("Actual withdrawal date cannot be after " + fmt(maxDate) + "."); return; }
     store.updateSample(s.id, { actualWithdrawal: d }, S.currentUser);
     if (!s.analysisStart) store.updateSample(s.id, { analysisStart: d }, S.currentUser);
     ep.status = "WITHDRAWN"; ep.actualDate = d;

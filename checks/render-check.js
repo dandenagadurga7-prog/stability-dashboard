@@ -411,29 +411,22 @@ else {
   else console.log("  step Back cleared loading + schedule");
 global.confirm = function () { return false; };
 
-/* Pulling now, with the official date inside the window, defaults the actual date to today */
-var nearS = SD.lifecycle.samplesFor(S, npid).filter(function (s) {
-  return !s.actualWithdrawal && s.plannedWithdrawal >= SD.dates.todayISO() && s.plannedWithdrawal <= SD.dates.addDays(SD.dates.todayISO(), 30);
-})[0];
-if (nearS) {
-  click(viewClick, { "data-act": "ep-new" });
-  document.getElementById("epSample").value = nearS.sampleId;
-  change(ids["overlayRoot"]._h.change[0], "epSample");
-  document.getElementById("epReqDate").value = SD.dates.addDays(nearS.plannedWithdrawal, -10);
-  change(ids["overlayRoot"]._h.change[0], "epReqDate");
-  document.getElementById("epReason").value = "due-window pull";
-  click(overlayClick, { "data-act": "ep-save" });
-  var nep = S.pulls[0];
-  click(viewClick, { "data-act": "ep-reviewer-approve", "data-id": nep.id });
-  click(viewClick, { "data-act": "ep-gl-approve", "data-id": nep.id });
-  click(viewClick, { "data-act": "ep-withdraw", "data-id": nep.id });
-  var defv = document.getElementById("epwDate").value;
-  if (defv !== SD.dates.todayISO()) failures.push("withdraw date default should be today, got " + defv);
-  else console.log("  withdraw date defaults to today (" + defv + ")");
-  click(overlayClick, { "data-act": "close-overlay" });
-} else {
-  console.log("  (no sample inside the withdrawal window to test today-default)");
-}
+/* Early-pull window is official date - 30 days .. official date (0 to 1 month early) */
+var wSample = SD.lifecycle.samplesFor(S, npid)[1];
+click(viewClick, { "data-act": "ep-new" });
+document.getElementById("epSample").value = wSample.sampleId;
+change(ids["overlayRoot"]._h.change[0], "epSample");
+var wMin = SD.dates.addDays(wSample.plannedWithdrawal, -30);
+var wMax = wSample.plannedWithdrawal;
+var defVal = document.getElementById("epReqDate").value;
+if (defVal < wMin || defVal > wMax) failures.push("requested date default outside window: " + defVal + " not in " + wMin + ".." + wMax);
+else console.log("  early-pull window " + wMin + " .. " + wMax + ", default " + defVal);
+document.getElementById("epReqDate").value = SD.dates.addDays(wSample.plannedWithdrawal, -31);
+document.getElementById("epReason").value = "too early";
+click(overlayClick, { "data-act": "ep-save" });
+if (S.pulls.some(function (x) { return x.reason === "too early"; })) failures.push("requested date more than 30 days early was allowed");
+else console.log("  rejected requested date > 30 days before official");
+click(overlayClick, { "data-act": "close-overlay" });
 
 }
 
