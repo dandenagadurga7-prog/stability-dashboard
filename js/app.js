@@ -1003,7 +1003,8 @@
       '<table style="margin-top:10px"><tbody>' +
       "<tr><th>Packing</th><td>" + packingHtml + "</td></tr>" +
       "</tbody></table>" +
-      '<table class="sched"><thead><tr><th>Schedule</th>' + docCols.map(function (l) {
+      '<table class="sched"><thead><tr><th class="num" colspan="' + (docCols.length + 1) + '" style="text-align:center">' + h(conds.map(condText).join("   ·   ")) + "</th></tr>" +
+      '<tr><th>Schedule</th>' + docCols.map(function (l) {
         if (l.indexOf("Water content") === 0) return '<th class="num">Water content /<br>' + h((m.schedule && m.schedule.waterText) ? m.schedule.waterText : "LOD / TGA") + "</th>";
         if (l === "Other test") return '<th class="num">Other test /<br>' + h((m.schedule && m.schedule.otherTest) ? m.schedule.otherTest : "") + "</th>";
         return '<th class="num">' + hHead(l) + "</th>";
