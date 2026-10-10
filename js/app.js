@@ -1437,7 +1437,7 @@
 
   function openNewProtocol() {
     var testOptions = S.testLibrary.map(function (t) { return '<option value="' + h(t.id) + '"' + (["anz_description", "anz_ir", "anz_water", "anz_assay", "anz_rel_total"].indexOf(t.id) >= 0 ? " selected" : "") + ">" + h(t.name) + "</option>"; }).join("");
-    openOverlay(drawerHead("New Stability Protocol", "Analytical Research & Development") + '<div class="drawer-b">' +
+    openOverlay(drawerHead("New Stability Protocol", "") + '<div class="drawer-b">' +
       '<div class="notice info">Fill this in your company format. The protocol is created as <strong>DRAFT</strong>; after submission it goes to Reviewer then Group Leader sign-off.</div>' +
       '<div class="eyebrow">Identification</div>' +
       '<label class="fld" style="margin-top:6px">Drug substance</label><input class="input" id="npProduct" placeholder="e.g. Anastrozole" />' +
