@@ -944,8 +944,12 @@
     var atItems = ["A", "B", "C", "D", "E", "F"].map(function (l) { return '<li><span class="mark">' + has(m.studyAt, l) + "</span> " + l + ".</li>"; }).join("");
     var stItems = sampleTypes.map(function (s) { return '<li><span class="mark">' + ((m.sampleType || "1  Lab sample") === s ? "\u2713" : "") + "</span> " + h(s) + "</li>"; }).join("");
     var testNames = (p.tests || []).map(function (t) { var d = SD.testById(t); return d ? d.name : t; }).join(", ");
-    var conds = (m.sampleConditions && m.sampleConditions.length) ? m.sampleConditions : [p.storageCondition];
-    var condRowsHtml = "<tr><th>Storage condition</th><td>" + conds.map(function (c) { return h(c); }).join("<br>") + "</td></tr>";
+    var conds = (m.sampleConditions && m.sampleConditions.length) ? m.sampleConditions.slice() : [p.storageCondition];
+    function condTemp(s) { var mm = String(s).match(/(-?\d{1,3})/); return mm ? parseInt(mm[1], 10) : 9999; }
+    function condText(s) { return String(s).replace(/^[A-F]\.\s*/, ""); }
+    function nthOrd(n) { return n + (n === 1 ? "st" : n === 2 ? "nd" : n === 3 ? "rd" : "th"); }
+    conds.sort(function (a, b) { return condTemp(a) - condTemp(b); });
+    var condRowsHtml = "<tr><th>Storage condition</th><td>" + conds.map(function (c, i) { return h(nthOrd(i + 1) + ": " + condText(c)); }).join("<br>") + "</td></tr>";
     var docCols = SCHED_ROWS, docSchedRows;
     if (m.schedule && m.schedule.rows && m.schedule.rows.length && m.schedule.rows[0].label !== undefined) {
       docCols = (m.schedule.cols && m.schedule.cols.length) ? m.schedule.cols : SCHED_ROWS;
