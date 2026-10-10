@@ -74,6 +74,8 @@
     return [p.storageCondition || "—"];
   }
   function protocolConditions(p) { return protocolConditionList(p).join(", "); }
+  /* temperature number used to match a protocol condition with what is already loaded */
+  function condNum(s) { var m = String(s).match(/(-?\d{1,3})/); return m ? m[1] : String(s); }
   function loadingChamberText(l) {
     if (l.conditions && l.conditions.length) return l.conditions.map(function (c) { return c.chamberName + " · " + c.chamberCondition; }).join("; ");
     return l.chamberName + " · " + l.condition;
@@ -859,7 +861,10 @@
       var st = statusOf(s), ep = latestPull(s.sampleId);
       return "<tr><td>" + h(s.sampleId) + "</td><td>" + h(s.timePointLabel) + "</td><td>" + fmt(s.plannedWithdrawal) + "</td><td>" + (ep ? fmt(ep.requestedDate) : "—") + "</td><td>" + (s.actualWithdrawal ? fmt(s.actualWithdrawal) : "—") + "</td><td>" + (s.arNumber ? h(s.arNumber) : "—") + "</td><td>" + statusBadge(st.def) + "</td></tr>";
     }).join("");
-    return '<div class="toolbar"><a class="btn" href="#/protocols">← Protocols</a><a class="btn" href="#/protocoldoc/' + id + '">Protocol document</a><div class="grow"></div>' + nextActionHtml(id) + "</div>" +
+    var missConds = pr.loading ? missingConditions(p, pr.loading) : [];
+    return '<div class="toolbar"><a class="btn" href="#/protocols">← Protocols</a><a class="btn" href="#/protocoldoc/' + id + '">Protocol document</a><div class="grow"></div>' +
+      (missConds.length ? '<button class="btn primary" data-act="load-add" data-id="' + id + '">Add condition (' + missConds.length + ')</button> ' : "") +
+      nextActionHtml(id) + "</div>" +
       '<div class="grid-2">' +
       '<div class="card"><div class="card-h"><h3>' + h(p.product) + '</h3><span class="hint">' + h(p.protocolNo) + '</span></div><div class="card-b"><dl class="meta">' +
       "<dt>Protocol ID</dt><dd>" + h(id) + "</dd>" +
@@ -1349,9 +1354,7 @@
     return S.chambers.map(function (c) { return '<option value="' + h(c.id) + '"' + (sel === c.id ? " selected" : "") + ">" + h(c.id + " — " + c.name + " (" + c.temperature + (c.humidity && c.humidity !== "NA" ? " / " + c.humidity : "") + ")") + "</option>"; }).join("");
   }
 
-  function generateScheduleForLoading(p, loading) {
-    if (SD.lifecycle.samplesFor(S, p.id).length) return;
-    var conds = (loading.conditions && loading.conditions.length) ? loading.conditions : [{ condition: p.storageCondition, date: loading.date }];
+  function addScheduleConditions(p, loading, conds) {
     var n = S.samples.length, total = 0;
     conds.forEach(function (lc, ci) {
       var base = lc.date || loading.date;
@@ -1379,6 +1382,21 @@
       });
     });
     store.audit({ user: S.currentUser, action: "generate", entity: "schedule", entityId: p.protocolNo, note: total + " samples (" + conds.length + " condition(s)) from loading " + loading.loadingId });
+  }
+
+  function generateScheduleForLoading(p, loading) {
+    if (SD.lifecycle.samplesFor(S, p.id).length) return;
+    var conds = (loading.conditions && loading.conditions.length) ? loading.conditions : [{ condition: p.storageCondition, date: loading.date }];
+    addScheduleConditions(p, loading, conds);
+  }
+
+  function loadedConditionList(loading) {
+    if (loading.conditions && loading.conditions.length) return loading.conditions.map(function (c) { return c.condition; });
+    return loading.condition ? [loading.condition] : [];
+  }
+  function missingConditions(p, loading) {
+    var temps = loadedConditionList(loading).map(condNum);
+    return protocolConditionList(p).filter(function (c) { return temps.indexOf(condNum(c)) < 0; });
   }
 
   function autoChamberOptions(cond) {
@@ -1468,6 +1486,29 @@
     openOverlay(drawerHead("Chamber Loading", pr.er.erNumber + " · " + p.product) + '<div class="drawer-b">' +
       blocks +
       '<div style="margin-top:16px"><button class="btn primary" data-act="load-save" data-id="' + id + '">Confirm loading &amp; create schedule</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
+      "</div>");
+  }
+
+  function openAddConditions(id) {
+    var p = protocolOf(id), pr = projectOf(id);
+    if (!pr.loading) { alert("Load samples first."); return; }
+    var missing = missingConditions(p, pr.loading);
+    if (!missing.length) { alert("All protocol conditions are already loaded."); return; }
+    var qty = String(p.timePoints.length + 1);
+    var blocks = missing.map(function (cond, i) {
+      return '<table class="data sched" style="margin-top:12px"><thead><tr><th colspan="2" style="text-align:center">' + h("Add Condition " + (i + 1) + ": " + cond) + "</th></tr></thead><tbody>" +
+        '<tr><th>Chamber</th><td><select class="select" id="laChamber_' + i + '">' + autoChamberOptions(cond) + "</select></td></tr>" +
+        '<tr><th>Rack</th><td><input class="input" id="laRack_' + i + '" value="R1" /></td></tr>' +
+        '<tr><th>Shelf</th><td><input class="input" id="laShelf_' + i + '" value="S1" /></td></tr>' +
+        '<tr><th>Quantity</th><td><input class="input" id="laQty_' + i + '" value="' + h(qty) + '" /></td></tr>' +
+        '<tr><th>Loading date</th><td><input class="input" type="date" id="laDate_' + i + '" value="' + today() + '" /></td></tr>' +
+        '<tr><th>Loading time</th><td><input class="input" type="time" id="laTime_' + i + '" value="10:00" /></td></tr>' +
+        "</tbody></table>";
+    }).join("");
+    openOverlay(drawerHead("Add Conditions to Loading", p.protocolNo + " · " + missing.length + " missing") + '<div class="drawer-b">' +
+      '<div class="notice info">The existing loading is kept. Only these conditions are added, each with its own chamber and schedule.</div>' +
+      blocks +
+      '<div style="margin-top:16px"><button class="btn primary" data-act="load-add-save" data-id="' + id + '">Add conditions &amp; create schedule</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
       "</div>");
   }
 
@@ -2201,6 +2242,7 @@
     else if (act === "pack-open") openPack(id);
     else if (act === "er-generate") doErGenerate(id);
     else if (act === "load-open") openLoad(id);
+    else if (act === "load-add") openAddConditions(id);
     else if (act === "doc-generate-all") doDocs(id);
     else if (act === "final-open") openFinalReport(id);
     else if (act === "chamber-new") openChamber();
@@ -2355,6 +2397,31 @@
       };
       store.audit({ user: S.currentUser, action: "create", entity: "loading", entityId: lp.protocolNo, field: "loadingId", oldValue: null, newValue: lpr.loading.loadingId, note: "Loaded " + loadRecords.length + " condition(s) into chambers" });
       generateScheduleForLoading(lp, lpr.loading);
+      store.save(); closeOverlay(); render();
+    } else if (act === "load-add-save") {
+      var ap = protocolOf(id), apr = projectOf(id);
+      if (!apr.loading) return;
+      var missing = missingConditions(ap, apr.loading);
+      var addedRecs = missing.map(function (cond, i) {
+        function g(base) { var el = document.getElementById(base + "_" + i); return el ? String(el.value).trim() : ""; }
+        var chId = g("laChamber");
+        var ch = S.chambers.filter(function (c) { return c.id === chId; })[0] || {};
+        return {
+          condition: cond, chamberId: chId, chamberName: ch.name || chId,
+          chamberCondition: ch.temperature + (ch.humidity && ch.humidity !== "NA" ? " / " + ch.humidity : ""),
+          rack: g("laRack"), shelf: g("laShelf"), qty: g("laQty"),
+          date: g("laDate") || today(), time: g("laTime"), by: S.currentUser
+        };
+      });
+      if (addedRecs.some(function (r) { return !r.chamberId; })) { alert("Choose a chamber for every condition."); return; }
+      if (!apr.loading.conditions) apr.loading.conditions = [{
+        condition: apr.loading.condition, chamberId: apr.loading.chamberId, chamberName: apr.loading.chamberName,
+        chamberCondition: apr.loading.condition, rack: apr.loading.rack, shelf: apr.loading.shelf, qty: apr.loading.qty,
+        date: apr.loading.date, time: apr.loading.time, by: apr.loading.by
+      }];
+      apr.loading.conditions = apr.loading.conditions.concat(addedRecs);
+      addScheduleConditions(ap, apr.loading, addedRecs);
+      store.audit({ user: S.currentUser, action: "create", entity: "loading", entityId: ap.protocolNo, note: "Added " + addedRecs.length + " condition(s) to loading" });
       store.save(); closeOverlay(); render();
     } else if (act === "np-save") {
       var f = readProtocolForm();

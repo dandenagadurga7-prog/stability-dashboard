@@ -370,6 +370,20 @@ else {
   var gen2 = SD.lifecycle.samplesFor(S, crp.id);
   if (gen2.length !== 14) failures.push("loading schedule wrong: expected 14 (2 conditions x 7), got " + gen2.length);
   else console.log("  loading created " + gen2.length + " samples across 2 conditions");
+  /* add a missed condition back without touching what is already loaded */
+  var cprj = SD.lifecycle.project(S, crp.id);
+  var dropCond = cprj.loading.conditions[1].condition;
+  cprj.loading.conditions.splice(1, 1);
+  S.samples = S.samples.filter(function (s) { return !(s.protocolId === crp.id && s.condition === dropCond); });
+  goto("#/project/" + crp.id, "Add condition (1)");
+  click(viewClick, { "data-act": "load-add", "data-id": crp.id });
+  if (ids["overlayRoot"].innerHTML.indexOf("Add Condition 1") < 0) failures.push("add-condition drawer did not open");
+  document.getElementById("laChamber_0").value = "CH-01";
+  click(overlayClick, { "data-act": "load-add-save", "data-id": crp.id });
+  var gen3 = SD.lifecycle.samplesFor(S, crp.id);
+  if (gen3.length !== 14) failures.push("add condition wrong: expected 14 samples, got " + gen3.length);
+  if (SD.lifecycle.project(S, crp.id).loading.conditions.length !== 2) failures.push("loading conditions not restored to 2");
+  else console.log("  added missed condition -> " + gen3.length + " samples, 2 conditions");
 }
 
 function finish() {
