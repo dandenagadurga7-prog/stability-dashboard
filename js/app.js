@@ -74,6 +74,10 @@
     return [p.storageCondition || "—"];
   }
   function protocolConditions(p) { return protocolConditionList(p).join(", "); }
+  function loadingChamberText(l) {
+    if (l.conditions && l.conditions.length) return l.conditions.map(function (c) { return c.chamberName + " · " + c.chamberCondition; }).join("; ");
+    return l.chamberName + " · " + l.condition;
+  }
   function nextActionHtml(id) {
     var na = SD.lifecycle.nextAction(S, id);
     var control = na.act
@@ -843,8 +847,10 @@
     var doneCount = steps.filter(function (s) { return s.done; }).length;
     var pct = Math.round((doneCount / steps.length) * 100);
     var ps = SD.lifecycle.protocolStatus(S, id);
+    var STEP_BACK = { packing: 1, loading: 1, withdrawal: 1, analysis: 1, documents: 1 };
     var checkHtml = steps.map(function (s) {
-      return '<div class="check ' + (s.done ? "done" : "todo") + '"><span class="tick">' + (s.done ? "\u2713" : "\u25CB") + '</span><div><div class="c-label">' + h(s.label) + '</div><div class="muted">' + h(s.detail) + "</div></div></div>";
+      var back = (s.done && STEP_BACK[s.key]) ? ' <button class="btn small" data-act="step-back" data-key="' + s.key + '" data-id="' + id + '">Back</button>' : "";
+      return '<div class="check ' + (s.done ? "done" : "todo") + '"><span class="tick">' + (s.done ? "\u2713" : "\u25CB") + '</span><div><div class="c-label">' + h(s.label) + back + '</div><div class="muted">' + h(s.detail) + "</div></div></div>";
     }).join("");
     var ap = (pr.approvals || []).map(function (a) {
       return '<div class="row"><div class="grow"><strong>' + h(a.level) + '</strong> · ' + h(a.action) + (a.comment ? ' — <span class="muted">' + h(a.comment) + "</span>" : "") + '</div><div class="muted">' + h(a.user + " · " + a.at) + "</div></div>";
@@ -861,7 +867,7 @@
       "<dt>Batch(es)</dt><dd>" + h(p.batches.join(", ")) + "</dd>" +
       "<dt>Protocol Status</dt><dd>" + protoBadge(ps) + "</dd>" +
       "<dt>ER Number</dt><dd>" + (pr.er ? h(pr.er.erNumber) : "—") + "</dd>" +
-      "<dt>Chamber</dt><dd>" + (pr.loading ? h(pr.loading.chamberName + " · " + pr.loading.condition) : "—") + "</dd>" +
+      "<dt>Chamber</dt><dd>" + (pr.loading ? h(loadingChamberText(pr.loading)) : "—") + "</dd>" +
       "</dl></div></div>" +
       '<div class="card"><div class="card-h"><h3>Lifecycle</h3><span class="hint">' + doneCount + "/" + steps.length + " steps</span></div><div class=\"card-b\">" +
       '<div class="progress"><span style="width:' + pct + '%"></span></div>' + checkHtml + "</div></div>" +
@@ -1345,28 +1351,79 @@
 
   function generateScheduleForLoading(p, loading) {
     if (SD.lifecycle.samplesFor(S, p.id).length) return;
-    var base = loading.date, n = S.samples.length;
-    var initialId = "SMP-" + String(++n).padStart(4, "0");
-    S.samples.push({
-      id: "g" + Date.now() + "i", sampleId: initialId, protocolId: p.id, protocolNo: p.protocolNo,
-      product: p.product, productCode: p.productCode, batch: p.batches[0], storageCondition: p.storageCondition, pack: p.pack,
-      timePointMonths: 0, timePointLabel: "Initial", manufacturingDate: null, expiryDate: null,
-      plannedWithdrawal: base, actualWithdrawal: base, analysisStart: base, analysisCompleteDate: base,
-      analyst: S.currentUser, reviewer: S.users[10] ? S.users[10].name : "Reviewer", reviewStatus: "approved", reportStatus: "approved", hold: false, holdReason: "", remarks: "Initial, generated at loading"
-    });
-    S.results[initialId] = [];
-    p.timePoints.forEach(function (tp, i) {
-      var sid = "SMP-" + String(n + 1 + i).padStart(4, "0");
+    var conds = (loading.conditions && loading.conditions.length) ? loading.conditions : [{ condition: p.storageCondition, date: loading.date }];
+    var n = S.samples.length, total = 0;
+    conds.forEach(function (lc, ci) {
+      var base = lc.date || loading.date;
+      var initialId = "SMP-" + String(++n).padStart(4, "0");
       S.samples.push({
-        id: "g" + Date.now() + i, sampleId: sid, protocolId: p.id, protocolNo: p.protocolNo,
-        product: p.product, productCode: p.productCode, batch: p.batches[0], storageCondition: p.storageCondition, pack: p.pack,
-        timePointMonths: tp, timePointLabel: tp + "M", manufacturingDate: null, expiryDate: null,
-        plannedWithdrawal: dates.addMonths(base, tp), actualWithdrawal: null, analysisStart: null, analysisCompleteDate: null,
-        analyst: "", reviewer: "", reviewStatus: "not_started", reportStatus: "not_started", hold: false, holdReason: "", remarks: "Generated from loading " + loading.loadingId
+        id: "g" + Date.now() + "_" + ci + "i", sampleId: initialId, protocolId: p.id, protocolNo: p.protocolNo,
+        product: p.product, productCode: p.productCode, batch: p.batches[0], storageCondition: lc.condition, condition: lc.condition, pack: p.pack,
+        timePointMonths: 0, timePointLabel: "Initial", manufacturingDate: null, expiryDate: null,
+        plannedWithdrawal: base, actualWithdrawal: base, analysisStart: base, analysisCompleteDate: base,
+        analyst: S.currentUser, reviewer: S.users[10] ? S.users[10].name : "Reviewer", reviewStatus: "approved", reportStatus: "approved", hold: false, holdReason: "", remarks: "Initial, generated at loading"
       });
-      S.results[sid] = [];
+      S.results[initialId] = [];
+      total++;
+      p.timePoints.forEach(function (tp, i) {
+        var sid = "SMP-" + String(++n).padStart(4, "0");
+        S.samples.push({
+          id: "g" + Date.now() + "_" + ci + "_" + i, sampleId: sid, protocolId: p.id, protocolNo: p.protocolNo,
+          product: p.product, productCode: p.productCode, batch: p.batches[0], storageCondition: lc.condition, condition: lc.condition, pack: p.pack,
+          timePointMonths: tp, timePointLabel: tp + "M", manufacturingDate: null, expiryDate: null,
+          plannedWithdrawal: dates.addMonths(base, tp), actualWithdrawal: null, analysisStart: null, analysisCompleteDate: null,
+          analyst: "", reviewer: "", reviewStatus: "not_started", reportStatus: "not_started", hold: false, holdReason: "", remarks: "Generated from loading " + loading.loadingId
+        });
+        S.results[sid] = [];
+        total++;
+      });
     });
-    store.audit({ user: S.currentUser, action: "generate", entity: "schedule", entityId: p.protocolNo, note: (p.timePoints.length + 1) + " time points from loading " + loading.loadingId });
+    store.audit({ user: S.currentUser, action: "generate", entity: "schedule", entityId: p.protocolNo, note: total + " samples (" + conds.length + " condition(s)) from loading " + loading.loadingId });
+  }
+
+  function autoChamberOptions(cond) {
+    var mm = String(cond).match(/(-?\d{1,3})/);
+    var want = mm ? mm[1] : null, match = "";
+    if (want) S.chambers.forEach(function (c) { if (String(c.temperature).indexOf(want) >= 0) match = c.id; });
+    return chamberOptions(match);
+  }
+
+  /* Step back: clear the chosen lifecycle step and everything after it, then reopen that step to redo. */
+  function revertStep(id, key) {
+    var pr = projectOf(id), p = protocolOf(id);
+    if (!pr || !p) return;
+    if (!confirm("Go back to the '" + key + "' step?\n\nThis clears that step and every step after it so you can redo them. Any data entered for those steps will be lost.")) return;
+    var samples = SD.lifecycle.samplesFor(S, id);
+    function wipeResults() { samples.forEach(function (s) { delete S.results[s.sampleId]; }); }
+    function removeSamples() { wipeResults(); S.samples = S.samples.filter(function (s) { return s.protocolId !== id; }); }
+    if (key === "packing") {
+      pr.packing = null; pr.er = null; pr.loading = null; removeSamples();
+      pr.documents = []; pr.finalReport = null;
+    } else if (key === "loading") {
+      pr.loading = null; removeSamples();
+      pr.documents = []; pr.finalReport = null;
+    } else if (key === "withdrawal") {
+      samples.forEach(function (s) {
+        if (s.timePointLabel === "Initial") return;
+        s.actualWithdrawal = null; s.analysisStart = null; s.analysisCompleteDate = null; s.arNumber = null;
+        s.reviewStatus = "not_started"; s.reportStatus = "not_started"; s.analyst = ""; s.reviewer = "";
+        (S.results[s.sampleId] || []).forEach(function (r) { r.result = ""; r.status = "pending"; r.analyst = ""; r.date = ""; });
+      });
+      pr.documents = []; pr.finalReport = null;
+    } else if (key === "analysis") {
+      samples.forEach(function (s) {
+        if (s.timePointLabel === "Initial") return;
+        s.analysisCompleteDate = null; s.arNumber = null; s.reviewStatus = "not_started"; s.reportStatus = "not_started";
+      });
+      pr.documents = []; pr.finalReport = null;
+    } else if (key === "documents") {
+      pr.documents = []; pr.finalReport = null;
+    }
+    store.audit({ user: S.currentUser, action: "update", entity: "lifecycle", entityId: p.protocolNo, note: "Reverted to step: " + key });
+    store.save();
+    if (key === "packing") openPack(id);
+    else if (key === "loading") openLoad(id);
+    else { closeOverlay(); render(); }
   }
 
   function openPack(id) {
@@ -1397,15 +1454,20 @@
     var p = protocolOf(id), pr = projectOf(id);
     if (!pr.er) { alert("Generate the ER number first."); return; }
     if (pr.loading) { alert("Already loaded: " + pr.loading.loadingId); return; }
+    var conds = protocolConditionList(p);
+    var blocks = conds.map(function (cond, i) {
+      return '<table class="data sched" style="margin-top:12px"><thead><tr><th colspan="2" style="text-align:center">' + h("Condition " + (i + 1) + ": " + cond) + "</th></tr></thead><tbody>" +
+        '<tr><th>Chamber</th><td><select class="select" id="loadChamber_' + i + '">' + autoChamberOptions(cond) + "</select></td></tr>" +
+        '<tr><th>Rack</th><td><input class="input" id="loadRack_' + i + '" value="R1" /></td></tr>' +
+        '<tr><th>Shelf</th><td><input class="input" id="loadShelf_' + i + '" value="S1" /></td></tr>' +
+        '<tr><th>Quantity</th><td><input class="input" id="loadQty_' + i + '" value="' + h(String(p.timePoints.length + 1)) + '" /></td></tr>' +
+        '<tr><th>Loading date</th><td><input class="input" type="date" id="loadDate_' + i + '" value="' + today() + '" /></td></tr>' +
+        '<tr><th>Loading time</th><td><input class="input" type="time" id="loadTime_' + i + '" value="10:00" /></td></tr>' +
+        "</tbody></table>";
+    }).join("");
     openOverlay(drawerHead("Chamber Loading", pr.er.erNumber + " · " + p.product) + '<div class="drawer-b">' +
-      '<div class="notice">Protocol, product, batch, study type and time points are carried over. Loading creates the withdrawal schedule automatically.</div>' +
-      '<label class="fld">Chamber</label><select class="select" id="loadChamber">' + chamberOptions("") + "</select>" +
-      '<label class="fld" style="margin-top:10px">Rack</label><input class="input" id="loadRack" value="R1" />' +
-      '<label class="fld" style="margin-top:10px">Shelf</label><input class="input" id="loadShelf" value="S1" />' +
-      '<label class="fld" style="margin-top:10px">Quantity</label><input class="input" id="loadQty" value="' + h(String(p.timePoints.length + 1)) + '" />' +
-      '<label class="fld" style="margin-top:10px">Loading date</label><input class="input" type="date" id="loadDate" value="' + today() + '" />' +
-      '<label class="fld" style="margin-top:10px">Loading time</label><input class="input" type="time" id="loadTime" value="10:00" />' +
-      '<div style="margin-top:16px"><button class="btn primary" data-act="load-save" data-id="' + id + '">Confirm loading & create schedule</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
+      blocks +
+      '<div style="margin-top:16px"><button class="btn primary" data-act="load-save" data-id="' + id + '">Confirm loading &amp; create schedule</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
       "</div>");
   }
 
@@ -2135,6 +2197,7 @@
     }
     else if (act === "new-protocol") openNewProtocol();
     else if (act === "proto-edit") openProtocolForm(id);
+    else if (act === "step-back") revertStep(id, btn.getAttribute("data-key"));
     else if (act === "pack-open") openPack(id);
     else if (act === "er-generate") doErGenerate(id);
     else if (act === "load-open") openLoad(id);
@@ -2270,16 +2333,27 @@
       store.save(); closeOverlay(); render();
     } else if (act === "load-save") {
       var lp = protocolOf(id), lpr = projectOf(id);
-      var chId = document.getElementById("loadChamber").value;
-      var ch = S.chambers.filter(function (c) { return c.id === chId; })[0] || {};
+      var lConds = protocolConditionList(lp);
+      var loadRecords = lConds.map(function (cond, i) {
+        function g(base) { var el = document.getElementById(base + "_" + i); return el ? String(el.value).trim() : ""; }
+        var chId = g("loadChamber");
+        var ch = S.chambers.filter(function (c) { return c.id === chId; })[0] || {};
+        return {
+          condition: cond, chamberId: chId, chamberName: ch.name || chId,
+          chamberCondition: ch.temperature + (ch.humidity && ch.humidity !== "NA" ? " / " + ch.humidity : ""),
+          rack: g("loadRack"), shelf: g("loadShelf"), qty: g("loadQty"),
+          date: g("loadDate") || today(), time: g("loadTime"), by: S.currentUser
+        };
+      });
+      if (loadRecords.some(function (r) { return !r.chamberId; })) { alert("Choose a chamber for every condition."); return; }
       lpr.loading = {
-        loadingId: SD.ids.next(S, "load"), chamberId: chId, chamberName: ch.name || chId,
-        condition: ch.temperature + (ch.humidity && ch.humidity !== "NA" ? " / " + ch.humidity : ""),
-        rack: document.getElementById("loadRack").value.trim(), shelf: document.getElementById("loadShelf").value.trim(),
-        qty: document.getElementById("loadQty").value.trim(), date: document.getElementById("loadDate").value || today(),
-        time: document.getElementById("loadTime").value, by: S.currentUser
+        loadingId: SD.ids.next(S, "load"),
+        chamberId: loadRecords[0].chamberId, chamberName: loadRecords[0].chamberName, condition: loadRecords[0].chamberCondition,
+        rack: loadRecords[0].rack, shelf: loadRecords[0].shelf, qty: loadRecords[0].qty,
+        date: loadRecords[0].date, time: loadRecords[0].time, by: S.currentUser,
+        conditions: loadRecords
       };
-      store.audit({ user: S.currentUser, action: "create", entity: "loading", entityId: lp.protocolNo, field: "loadingId", oldValue: null, newValue: lpr.loading.loadingId, note: "Loaded into " + lpr.loading.chamberName });
+      store.audit({ user: S.currentUser, action: "create", entity: "loading", entityId: lp.protocolNo, field: "loadingId", oldValue: null, newValue: lpr.loading.loadingId, note: "Loaded " + loadRecords.length + " condition(s) into chambers" });
       generateScheduleForLoading(lp, lpr.loading);
       store.save(); closeOverlay(); render();
     } else if (act === "np-save") {

@@ -198,12 +198,12 @@ else {
   console.log("  packing = " + (prn.packing && prn.packing.packingId) + ", ER = " + (prn.er && prn.er.erNumber));
 
   click(viewClick, { "data-act": "load-open", "data-id": npid });
-  document.getElementById("loadChamber").value = "CH-01";
-  document.getElementById("loadRack").value = "R1";
-  document.getElementById("loadShelf").value = "S1";
-  document.getElementById("loadQty").value = "7";
-  document.getElementById("loadDate").value = "2026-02-01";
-  document.getElementById("loadTime").value = "10:00";
+  document.getElementById("loadChamber_0").value = "CH-01";
+  document.getElementById("loadRack_0").value = "R1";
+  document.getElementById("loadShelf_0").value = "S1";
+  document.getElementById("loadQty_0").value = "7";
+  document.getElementById("loadDate_0").value = "2026-02-01";
+  document.getElementById("loadTime_0").value = "10:00";
   click(overlayClick, { "data-act": "load-save", "data-id": npid });
   var gen = SD.lifecycle.samplesFor(S, npid);
   if (!prn.loading) failures.push("loading not saved");
@@ -351,11 +351,25 @@ else {
   if (!crp.protocolMeta || !crp.protocolMeta.packing || crp.protocolMeta.packing.innermost !== "Corrected LDPE bag, nitrogen purged") failures.push("edited packing not saved");
   console.log("  after edit + resubmit -> " + crStatus2 + ", number unchanged = " + (crp.protocolNo === crNoBefore));
   goto("#/packing", "40±2°C / 75±5% RH, 25±2°C / 60±5% RH");
+  click(viewClick, { "data-act": "proto-review-approve", "data-id": crp.id });
+  click(viewClick, { "data-act": "proto-gl-approve", "data-id": crp.id });
+  if (SD.lifecycle.protocolStatus(S, crp.id) !== "APPROVED") failures.push("CR protocol not approved for packing");
   click(viewClick, { "data-act": "pack-open", "data-id": crp.id });
   var pkHtml = ids["overlayRoot"].innerHTML;
   if (pkHtml.indexOf("Condition 1") < 0 || pkHtml.indexOf("Condition 2") < 0) failures.push("packing drawer did not show all conditions");
   else console.log("  packing drawer shows all " + crp.protocolMeta.sampleConditions.length + " conditions");
-  click(overlayClick, { "data-act": "close-overlay" });
+  click(overlayClick, { "data-act": "pack-save", "data-id": crp.id });
+  click(viewClick, { "data-act": "load-open", "data-id": crp.id });
+  var lHtml = ids["overlayRoot"].innerHTML;
+  var lConds = (lHtml.match(/Condition \d+: /g) || []).length;
+  if (lHtml.indexOf("loadChamber_0") < 0 || lHtml.indexOf("loadChamber_1") < 0) failures.push("loading drawer missing per-condition chambers");
+  else console.log("  loading drawer shows " + lConds + " condition(s)");
+  document.getElementById("loadChamber_0").value = "CH-01";
+  document.getElementById("loadChamber_1").value = "CH-01";
+  click(overlayClick, { "data-act": "load-save", "data-id": crp.id });
+  var gen2 = SD.lifecycle.samplesFor(S, crp.id);
+  if (gen2.length !== 14) failures.push("loading schedule wrong: expected 14 (2 conditions x 7), got " + gen2.length);
+  else console.log("  loading created " + gen2.length + " samples across 2 conditions");
 }
 
 function finish() {
