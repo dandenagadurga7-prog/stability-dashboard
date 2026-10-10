@@ -851,7 +851,7 @@
       "<dt>Protocol ID</dt><dd>" + h(id) + "</dd>" +
       "<dt>Product Code</dt><dd>" + h(p.productCode) + "</dd>" +
       "<dt>Batch(es)</dt><dd>" + h(p.batches.join(", ")) + "</dd>" +
-      "<dt>Condition</dt><dd>" + h(p.storageCondition) + "</dd>" +
+      "<dt>Condition</dt><dd>" + h((p.protocolMeta && p.protocolMeta.sampleConditions && p.protocolMeta.sampleConditions.length) ? p.protocolMeta.sampleConditions.map(function (c) { return String(c).replace(/^[A-F]\.\s*/, ""); }).join(" · ") : p.storageCondition) + "</dd>" +
       "<dt>Time Points</dt><dd>" + h(p.timePoints.join(", ") + " months") + "</dd>" +
       "<dt>Protocol Status</dt><dd>" + protoBadge(ps) + "</dd>" +
       "<dt>ER Number</dt><dd>" + (pr.er ? h(pr.er.erNumber) : "—") + "</dd>" +
