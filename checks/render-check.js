@@ -225,6 +225,21 @@ else {
 var withAr = S.samples.filter(function (s) { return s.arNumber; }).length;
 console.log("  AR numbers on record: " + withAr);
 
+/* Test Results: tests come from the protocol; unticked tests are not saved */
+var rsS = S.samples[0];
+var rsP = S.protocols.filter(function (p) { return p.id === rsS.protocolId; })[0];
+if (rsS && rsP && rsP.tests.length > 1) {
+  var dropTid = rsP.tests[0], keepTid = rsP.tests[1];
+  click(viewClick, { "data-act": "results-open", "data-id": rsS.id });
+  document.getElementById("res_chk_" + dropTid).checked = false;
+  document.getElementById("res_in_" + keepTid).value = "Complies";
+  click(overlayClick, { "data-act": "results-save", "data-id": rsS.id });
+  var savedRows = S.results[rsS.sampleId] || [];
+  if (savedRows.some(function (r) { return r.testId === dropTid; })) failures.push("unticked protocol test was still saved");
+  if (!savedRows.some(function (r) { return r.testId === keepTid; })) failures.push("ticked protocol test was not saved");
+  else console.log("  Test Results: " + rsP.tests.length + " protocol tests, unticked one not saved (" + savedRows.length + " saved)");
+}
+
 /* STP worksheet: theory loads, analyst enters weights, system prints PASS/FAIL */
 console.log("\nWorksheet: select STP -> select tests -> enter data -> PASS/FAIL");
 click(viewClick, { "data-act": "ws-new" });

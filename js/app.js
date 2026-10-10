@@ -1109,26 +1109,34 @@
       "</div>");
   }
 
+  var resCtx = { sampleId: null, tests: [] };
+  function statusOptions(sel) {
+    var opts = [["pending", "Pending"], ["within_spec", "Within spec"], ["out_of_spec", "Out of spec"], ["na", "N/A"]];
+    return opts.map(function (o) { return '<option value="' + o[0] + '"' + (sel === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("");
+  }
+
   function openResults(id) {
     var s = store.getSample(id); if (!s) return;
-    var rows = S.results[s.sampleId] || [];
-    if (!rows.length) {
-      var p = protocolOf(s.protocolId);
-      rows = p.tests.map(function (tid) { var t = SD.testById(tid); return { testId: tid, test: t.name, method: t.method, specification: t.specification, unit: t.unit, result: "", status: "pending", analyst: "", date: "" }; });
-    }
-    var body = rows.map(function (r, i) {
-      return "<tr><td>" + h(r.test) + '</td><td class="wrap">' + h(r.specification) + '</td><td class="num">' + h(r.unit) + "</td>" +
-        '<td><input class="input" style="width:110px" data-result="' + i + '" value="' + h(r.result) + '" placeholder="value" /></td>' +
-        '<td><select class="select" style="width:130px" data-result-status="' + i + '">' +
-        '<option value="pending"' + (r.status === "pending" ? " selected" : "") + ">Pending</option>" +
-        '<option value="within_spec"' + (r.status === "within_spec" ? " selected" : "") + ">Within spec</option>" +
-        '<option value="out_of_spec"' + (r.status === "out_of_spec" ? " selected" : "") + ">Out of spec</option>" +
-        '<option value="na"' + (r.status === "na" ? " selected" : "") + ">N/A</option></select></td></tr>";
+    var p = protocolOf(s.protocolId);
+    var existing = S.results[s.sampleId] || [];
+    var byTid = {}; existing.forEach(function (r) { if (r.testId) byTid[r.testId] = r; });
+    var hasSaved = existing.length > 0;
+    resCtx = { sampleId: s.sampleId, tests: p.tests.slice() };
+    var checks = p.tests.map(function (tid) {
+      var t = SD.testById(tid), on = hasSaved ? !!byTid[tid] : true;
+      return '<label style="display:inline-block;margin:0 14px 8px 0"><input type="checkbox" id="res_chk_' + h(tid) + '" data-res-test="' + h(tid) + '"' + (on ? " checked" : "") + " /> " + h(t.name) + "</label>";
+    }).join("");
+    var body = p.tests.map(function (tid) {
+      var t = SD.testById(tid), r = byTid[tid] || { result: "", status: "pending" }, on = hasSaved ? !!byTid[tid] : true;
+      return '<tr id="resRow_' + h(tid) + '"' + (on ? "" : ' style="display:none"') + "><td>" + h(t.name) + '</td><td class="wrap">' + h(t.specification) + '</td><td class="num">' + h(t.unit) + "</td>" +
+        '<td><input class="input" style="width:110px" id="res_in_' + h(tid) + '" value="' + h(r.result) + '" placeholder="—" /></td>' +
+        '<td><select class="select" style="width:130px" id="res_st_' + h(tid) + '">' + statusOptions(r.status) + "</select></td></tr>";
     }).join("");
     openOverlay(drawerHead("Test Results", s.sampleId + " · " + s.product) + '<div class="drawer-b">' +
+      '<div class="eyebrow">Tests (from the protocol ' + h(p.protocolNo) + " — tick the ones to analyse)</div><div style=\"margin:6px 0 12px\">" + checks + "</div>" +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Test</th><th>Specification</th><th>Unit</th><th>Result</th><th>Status</th></tr></thead><tbody>' + body + "</tbody></table></div></div>" +
       '<div style="margin-top:16px"><button class="btn primary" data-act="results-save" data-id="' + s.id + '">Save results</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
-      '<p class="muted" style="margin-top:12px">Entering a result does not complete the analysis; use "Mark analysis complete" when all tests are entered.</p>' +
+      '<p class="muted" style="margin-top:12px">Tick the tests to analyse; unticked tests are not saved. Entering a result does not complete the analysis; use "Mark analysis complete" when all tests are entered.</p>' +
       "</div>");
   }
 
@@ -2378,23 +2386,21 @@
       closeOverlay(); render();
     } else if (act === "results-save") {
       var sample = store.getSample(id);
-      var rows = S.results[sample.sampleId] || [];
-      var resultInputs = document.querySelectorAll("[data-result]");
-      var statusInputs = document.querySelectorAll("[data-result-status]");
-      Array.prototype.forEach.call(resultInputs, function (inp, i) {
-        var idx = parseInt(inp.getAttribute("data-result"), 10);
-        var val = inp.value.trim();
-        var status = statusInputs[i] ? statusInputs[i].value : "pending";
+      var out = [];
+      resCtx.tests.forEach(function (tid) {
+        var chk = document.getElementById("res_chk_" + tid);
+        if (chk && chk.checked === false) return; /* unticked -> not saved */
+        var t = SD.testById(tid);
+        var inEl = document.getElementById("res_in_" + tid);
+        var stEl = document.getElementById("res_st_" + tid);
+        var val = inEl ? String(inEl.value).trim() : "";
+        var status = stEl ? stEl.value : "pending";
         if (val && status === "pending") status = "within_spec";
         if (!val && status !== "na") status = "pending";
-        if (!rows[idx]) return;
-        if (rows[idx].result !== val || rows[idx].status !== status) {
-          store.audit({ user: S.currentUser, action: "update", entity: "result", entityId: sample.sampleId, field: rows[idx].test, oldValue: rows[idx].result, newValue: val });
-        }
-        rows[idx].result = val; rows[idx].status = status;
-        rows[idx].analyst = S.currentUser; rows[idx].date = today();
+        out.push({ testId: tid, test: t.name, method: t.method, specification: t.specification, unit: t.unit, result: val, status: status, analyst: val ? S.currentUser : "", date: val ? today() : "" });
       });
-      S.results[sample.sampleId] = rows;
+      S.results[sample.sampleId] = out;
+      store.audit({ user: S.currentUser, action: "update", entity: "result", entityId: sample.sampleId, note: out.length + " test(s) saved" });
       store.save(); closeOverlay(); render();
     } else if (act === "pack-save") {
       var pk = protocolOf(id), pkr = projectOf(id);
@@ -2555,6 +2561,7 @@
     if (e.target && e.target.id === "epReqDate") recomputeEp();
     if (e.target && (e.target.id === "npTp" || e.target.id === "npTests")) renderNpSchedule();
     if (e.target && /^npCond/.test(e.target.id)) renderNpSchedule();
+    if (e.target && /^res_chk_/.test(e.target.id)) { var resRow = document.getElementById("resRow_" + e.target.id.slice(8)); if (resRow) resRow.style.display = (e.target.checked === false) ? "none" : ""; }
   }
 
   /* ---------- boot ---------- */
