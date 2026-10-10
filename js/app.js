@@ -1382,7 +1382,6 @@
         "<tr><th>Pack</th><td>" + h(pack) + "</td></tr>" +
         "<tr><th>Time Points</th><td>" + h(tps) + "</td></tr>" +
         '<tr><th>Quantity packed</th><td><input class="input" id="pkQty_' + i + '" value="' + h(p.timePoints.length + 1 + " time points") + '" /></td></tr>' +
-        '<tr><th>Container / pack configuration</th><td><input class="input" id="pkContainer_' + i + '" value="' + h(pack) + '" /></td></tr>' +
         '<tr><th>Packing date</th><td><input class="input" type="date" id="pkDate_' + i + '" value="' + today() + '" /></td></tr>' +
         '<tr><th>Packed by</th><td><input class="input" id="pkBy_' + i + '" value="' + h(S.currentUser) + '" /></td></tr>' +
         '<tr><th>Remarks</th><td><input class="input" id="pkRemarks_' + i + '" /></td></tr>' +
@@ -2254,13 +2253,12 @@
         return {
           condition: cond,
           quantity: g("pkQty") || "Not specified",
-          container: g("pkContainer"),
+          container: pk.pack || "",
           date: g("pkDate") || today(),
           by: g("pkBy") || S.currentUser,
           remarks: g("pkRemarks")
         };
       });
-      if (pkRecords.some(function (r) { return !r.container; })) { alert("Container / pack configuration is required for every condition."); return; }
       pkr.packing = {
         packingId: SD.ids.next(S, "pk"),
         quantity: pkRecords[0].quantity, container: pkRecords[0].container, date: pkRecords[0].date, by: pkRecords[0].by, remarks: pkRecords[0].remarks,

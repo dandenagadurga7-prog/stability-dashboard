@@ -187,7 +187,6 @@ else {
   console.log("  protocol " + np.protocolNo + " -> " + pstatus);
 
   click(viewClick, { "data-act": "pack-open", "data-id": npid });
-  document.getElementById("pkContainer_0").value = "HDPE container";
   document.getElementById("pkQty_0").value = "7 time points";
   document.getElementById("pkDate_0").value = SD.dates.todayISO();
   document.getElementById("pkBy_0").value = "tester";
