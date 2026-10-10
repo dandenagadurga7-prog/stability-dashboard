@@ -1001,7 +1001,7 @@
       "<tr><th>Packing</th><td>" + packingHtml + "</td></tr>" +
       "</tbody></table>" +
       '<table class="sched"><thead>' +
-      conds.map(function (c, i) { return '<tr><th class="num" colspan="' + (docCols.length + 1) + '" style="text-align:center">' + h(nthOrd(i + 1) + ": " + condText(c)) + "</th></tr>"; }).join("") +
+      conds.map(function (c) { return '<tr><th class="num" colspan="' + (docCols.length + 1) + '" style="text-align:center">' + h(condText(c)) + "</th></tr>"; }).join("") +
       '<tr><th>Schedule</th>' + docCols.map(function (l) {
         if (l.indexOf("Water content") === 0) return '<th class="num">Water content /<br>' + h((m.schedule && m.schedule.waterText) ? m.schedule.waterText : "LOD / TGA") + "</th>";
         if (l === "Other test") return '<th class="num">Other test /<br>' + h((m.schedule && m.schedule.otherTest) ? m.schedule.otherTest : "") + "</th>";
