@@ -66,6 +66,13 @@
     var lbl = { DRAFT: "Draft", UNDER_REVIEW: "Under review", PENDING_GL: "Pending Group Leader", APPROVED: "Approved", CHANGES_REQUESTED: "Changes requested" }[ps] || ps;
     return '<span class="badge tone-' + PROTO_TONE(ps) + '"><span class="dot"></span>' + h(lbl) + "</span>";
   }
+  /* Conditions come from the approved protocol's "Stability Study Required At" list, so packing stays in step with the protocol. */
+  function protocolConditions(p) {
+    var m = p.protocolMeta || {};
+    var conds = m.sampleConditions;
+    if (conds && conds.length) return conds.map(function (c) { return String(c).replace(/^[A-F]\.\s*/, ""); }).join(", ");
+    return p.storageCondition || "—";
+  }
   function nextActionHtml(id) {
     var na = SD.lifecycle.nextAction(S, id);
     var control = na.act
@@ -722,7 +729,7 @@
       var action = pr.packing
         ? '<span class="pill">' + h(pr.packing.packingId) + " · " + h(fmt(pr.packing.date)) + "</span>"
         : (ps === "APPROVED" ? '<button class="btn small primary" data-act="pack-open" data-id="' + p.id + '">Pack samples</button>' : '<span class="badge tone-muted"><span class="dot"></span>Awaiting protocol approval</span>');
-      return "<tr><td><a href=\"#/project/" + p.id + '">' + h(p.protocolNo) + '</a></td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + '</td><td class="wrap">' + h(p.storageCondition) + "</td><td>" + h(p.timePoints.join(", ") + " M") + "</td><td>" + protoBadge(ps) + "</td><td>" + action + "</td></tr>";
+      return "<tr><td><a href=\"#/project/" + p.id + '">' + h(p.protocolNo) + '</a></td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + '</td><td class="wrap">' + h(protocolConditions(p)) + "</td><td>" + h(p.timePoints.join(", ") + " M") + "</td><td>" + protoBadge(ps) + "</td><td>" + action + "</td></tr>";
     }).join("");
     return '<div class="card"><div class="card-h"><h3>Sample Packing</h3><span class="hint">approved protocols move here automatically</span></div><div class="table-wrap"><table class="data"><thead><tr><th>Protocol</th><th>Product</th><th>Batch</th><th>Condition</th><th>Time Points</th><th>Protocol Status</th><th>Packing</th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
   };
@@ -1503,6 +1510,7 @@
       product: val("npProduct"), batch: val("npBatch"), code: val("npCode"),
       mfg: val("npMfg"), stpNo: val("npStpNo"), dateIn: val("npDateIn"),
       reasons: reasons, reasonOther: val("npReasonOther"), conds: conds, condOther: val("npCondOther"),
+      conditionText: conds.length ? conds.map(function (c) { return c.replace(/^[A-F]\.\s*/, ""); }).join(", ") : "",
       studyAt: at, enclosures: enc, sampleType: sampleType,
       packing: packing,
       packingText: [packing.innermost, packing.middle, packing.outermost].filter(Boolean).join(" "),
@@ -2261,7 +2269,7 @@
       S.protocols.push({
         id: nid, protocolNo: protoNo, product: f.product,
         productCode: f.code || "—", apiOrForm: "Drug substance",
-        storageCondition: "25°C ± 2°C / 60% RH ± 5% RH", humidity: "NA",
+        storageCondition: f.conditionText || "25°C ± 2°C / 60% RH ± 5% RH", humidity: "NA",
         pack: f.packingText || "Not specified", batches: [f.batch],
         timePoints: [1, 2, 3, 6, 9, 12], tests: f.tests.length ? f.tests : (S.testLibrary || []).slice(0, 6).map(function (t) { return t.id; }),
         effectiveDate: today(), version: "V1.0", status: "Active",
@@ -2281,6 +2289,7 @@
       upProto.batches = [up.batch];
       upProto.productCode = up.code || upProto.productCode;
       upProto.pack = up.packingText || upProto.pack;
+      upProto.storageCondition = up.conditionText || upProto.storageCondition;
       upProto.reason = up.reasons.join("; ") || upProto.reason;
       upProto.projectCode = up.code || upProto.projectCode;
       upProto.manufacturingLocation = up.mfg;

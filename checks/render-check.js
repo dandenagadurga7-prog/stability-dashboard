@@ -329,6 +329,8 @@ click(viewClick, { "data-act": "new-protocol" });
 document.getElementById("npProduct").value = "CR Drug";
 document.getElementById("npCode").value = "CR";
 document.getElementById("npBatch").value = "CR-001";
+document.getElementById("npCondA").checked = true;
+document.getElementById("npCondB").checked = true;
 click(overlayClick, { "data-act": "np-save" });
 var crp = S.protocols[S.protocols.length - 1];
 if (!crp || crp.product !== "CR Drug") failures.push("CR protocol not created");
@@ -349,6 +351,7 @@ else {
   if (crp.protocolNo !== crNoBefore) failures.push("protocol number changed on edit: " + crNoBefore + " -> " + crp.protocolNo);
   if (!crp.protocolMeta || !crp.protocolMeta.packing || crp.protocolMeta.packing.innermost !== "Corrected LDPE bag, nitrogen purged") failures.push("edited packing not saved");
   console.log("  after edit + resubmit -> " + crStatus2 + ", number unchanged = " + (crp.protocolNo === crNoBefore));
+  goto("#/packing", "40±2°C / 75±5% RH, 25±2°C / 60±5% RH");
 }
 
 function finish() {
