@@ -999,7 +999,6 @@
       "</div>" +
       '<h3 style="font-size:14px;margin-top:18px">Schedule</h3>' +
       '<table><tbody>' +
-      "<tr><th>Storage condition</th><td>" + conds.map(function (c, i) { return h(nthOrd(i + 1) + ": " + condText(c)); }).join("<br>") + "</td></tr>" +
       "<tr><th>Packing</th><td>" + packingHtml + "</td></tr>" +
       "</tbody></table>" +
       '<table class="sched"><thead><tr><th>Schedule</th>' + docCols.map(function (l) {
