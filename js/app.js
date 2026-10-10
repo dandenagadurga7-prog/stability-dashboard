@@ -845,14 +845,12 @@
       var st = statusOf(s), ep = latestPull(s.sampleId);
       return "<tr><td>" + h(s.sampleId) + "</td><td>" + h(s.timePointLabel) + "</td><td>" + fmt(s.plannedWithdrawal) + "</td><td>" + (ep ? fmt(ep.requestedDate) : "—") + "</td><td>" + (s.actualWithdrawal ? fmt(s.actualWithdrawal) : "—") + "</td><td>" + (s.arNumber ? h(s.arNumber) : "—") + "</td><td>" + statusBadge(st.def) + "</td></tr>";
     }).join("");
-    return '<div class="toolbar"><a class="btn" href="#/protocols">← Protocols</a><a class="btn" href="#/protocoldoc/' + id + '">Protocol document</a><a class="btn" href="#/datasheet/' + id + '">Stability Data Sheet</a><div class="grow"></div>' + nextActionHtml(id) + "</div>" +
+    return '<div class="toolbar"><a class="btn" href="#/protocols">← Protocols</a><a class="btn" href="#/protocoldoc/' + id + '">Protocol document</a><div class="grow"></div>' + nextActionHtml(id) + "</div>" +
       '<div class="grid-2">' +
       '<div class="card"><div class="card-h"><h3>' + h(p.product) + '</h3><span class="hint">' + h(p.protocolNo) + '</span></div><div class="card-b"><dl class="meta">' +
       "<dt>Protocol ID</dt><dd>" + h(id) + "</dd>" +
       "<dt>Product Code</dt><dd>" + h(p.productCode) + "</dd>" +
       "<dt>Batch(es)</dt><dd>" + h(p.batches.join(", ")) + "</dd>" +
-      "<dt>Condition</dt><dd>" + h((p.protocolMeta && p.protocolMeta.sampleConditions && p.protocolMeta.sampleConditions.length) ? p.protocolMeta.sampleConditions.map(function (c) { return String(c).replace(/^[A-F]\.\s*/, ""); }).join(" · ") : p.storageCondition) + "</dd>" +
-      "<dt>Time Points</dt><dd>" + h(p.timePoints.join(", ") + " months") + "</dd>" +
       "<dt>Protocol Status</dt><dd>" + protoBadge(ps) + "</dd>" +
       "<dt>ER Number</dt><dd>" + (pr.er ? h(pr.er.erNumber) : "—") + "</dd>" +
       "<dt>Chamber</dt><dd>" + (pr.loading ? h(pr.loading.chamberName + " · " + pr.loading.condition) : "—") + "</dd>" +
