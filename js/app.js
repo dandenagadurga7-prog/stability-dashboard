@@ -997,7 +997,6 @@
       '<div class="proto-col"><div class="eyebrow">Stability Study Required At</div><ul class="proto-list">' + condItems + "</ul>" + (m.sampleConditionOther ? '<div class="muted" style="font-size:11px">Any other: ' + h(m.sampleConditionOther) + "</div>" : "") +
       '<div class="eyebrow" style="margin-top:10px">Sample Details</div><ul class="proto-list">' + stItems + "</ul></div>" +
       "</div>" +
-      '<h3 style="font-size:14px;margin-top:18px">Schedule</h3>' +
       '<table><tbody>' +
       "<tr><th>Packing</th><td>" + packingHtml + "</td></tr>" +
       "</tbody></table>" +
