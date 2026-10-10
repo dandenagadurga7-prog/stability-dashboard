@@ -596,7 +596,7 @@
       "<dt>Storage Condition</dt><dd>" + h(s.storageCondition) + "</dd>" +
       "<dt>Pack</dt><dd>" + h(s.pack) + "</dd>" +
       "<dt>Time Point</dt><dd>" + h(s.timePointLabel) + "</dd>" +
-      "<dt>Withdrawal Window</dt><dd>± " + S.settings.withdrawalWindowDays + " days from planned</dd>" +
+      "<dt>Withdrawal Window</dt><dd>planned date to + " + S.settings.withdrawalWindowDays + " days</dd>" +
       "<dt>Analysis Timeline</dt><dd>" + S.settings.analysisDueDays + " days from actual withdrawal</dd>" +
       "</dl></div></div>" +
       "</div>" +
@@ -712,7 +712,7 @@
     return demoNotice() +
       '<div class="grid-2">' +
       '<div class="card"><div class="card-h"><h3>Timeline Rules</h3><span class="hint">source of truth for date logic</span></div><div class="card-b">' +
-      '<label class="fld">Withdrawal window (± days from planned)</label><input class="input" id="setWindow" type="number" min="0" value="' + S.settings.withdrawalWindowDays + '" />' +
+      '<label class="fld">Withdrawal window (days after planned date)</label><input class="input" id="setWindow" type="number" min="0" value="' + S.settings.withdrawalWindowDays + '" />' +
       '<label class="fld" style="margin-top:10px">Analysis completion timeline (days after actual withdrawal)</label><input class="input" id="setAnalysis" type="number" min="0" value="' + S.settings.analysisDueDays + '" />' +
       '<label class="fld" style="margin-top:10px">Report timeline (days after analysis completion)</label><input class="input" id="setReport" type="number" min="0" value="' + S.settings.reportDueDays + '" />' +
       '<div style="margin-top:14px"><button class="btn primary" data-act="settings-save">Save rules</button></div>' +
