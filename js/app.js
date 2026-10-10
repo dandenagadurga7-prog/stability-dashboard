@@ -944,6 +944,8 @@
     var atItems = ["A", "B", "C", "D", "E", "F"].map(function (l) { return '<li><span class="mark">' + has(m.studyAt, l) + "</span> " + l + ".</li>"; }).join("");
     var stItems = sampleTypes.map(function (s) { return '<li><span class="mark">' + ((m.sampleType || "1  Lab sample") === s ? "\u2713" : "") + "</span> " + h(s) + "</li>"; }).join("");
     var testNames = (p.tests || []).map(function (t) { var d = SD.testById(t); return d ? d.name : t; }).join(", ");
+    var conds = (m.sampleConditions && m.sampleConditions.length) ? m.sampleConditions : [p.storageCondition];
+    var condRowsHtml = conds.map(function (c) { return "<tr><th>Storage condition</th><td>" + h(c) + "</td></tr>"; }).join("");
     var docCols = SCHED_ROWS, docSchedRows;
     if (m.schedule && m.schedule.rows && m.schedule.rows.length && m.schedule.rows[0].label !== undefined) {
       docCols = (m.schedule.cols && m.schedule.cols.length) ? m.schedule.cols : SCHED_ROWS;
@@ -987,12 +989,7 @@
       '<div class="proto-col"><div class="eyebrow">Stability Study Required At</div><ul class="proto-list">' + condItems + "</ul>" + (m.sampleConditionOther ? '<div class="muted" style="font-size:11px">Any other: ' + h(m.sampleConditionOther) + "</div>" : "") +
       '<div class="eyebrow" style="margin-top:10px">Sample Details</div><ul class="proto-list">' + stItems + "</ul></div>" +
       "</div>" +
-      "<table><tbody>" +
-      "<tr><th>Storage condition</th><td>" + h(p.storageCondition) + "</td></tr>" +
-      "<tr><th>Time points</th><td>" + h((p.timePoints || []).join(", ") + " months") + "</td></tr>" +
-      "<tr><th>Tests</th><td>" + h(testNames) + "</td></tr>" +
-      "<tr><th>Packing</th><td>" + ((m.packing && typeof m.packing === "object") ? ("<strong>Innermost:</strong> " + h(m.packing.innermost || "") + "<br><strong>Middle:</strong> " + h(m.packing.middle || "") + "<br><strong>Outermost:</strong> " + h(m.packing.outermost || "")) : h(m.packing || p.pack)) + "</td></tr>" +
-      "</tbody></table>" +
+      "<table><tbody>" + condRowsHtml + "</tbody></table>" +
       '<h3 style="font-size:14px;margin-top:18px">Schedule</h3>' +
       '<table class="sched"><thead><tr><th>Schedule</th>' + docCols.map(function (l) {
         if (l.indexOf("Water content") === 0) return '<th class="num">Water content /<br>' + h((m.schedule && m.schedule.waterText) ? m.schedule.waterText : "LOD / TGA") + "</th>";
