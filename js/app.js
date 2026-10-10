@@ -1056,10 +1056,10 @@
     var ps = SD.lifecycle.protocolStatus(S, id);
     var done = ps === "UNDER_REVIEW" || ps === "PENDING_GL" || ps === "APPROVED";
     var badge = done
-      ? '<span class="badge tone-success"><span class="dot"></span>Analyst: Done</span>'
-      : '<span class="badge tone-warn"><span class="dot"></span>Analyst: Pending</span>';
+      ? '<span class="badge tone-success"><span class="dot"></span>Done</span>'
+      : '<span class="badge tone-warn"><span class="dot"></span>Pending</span>';
     openOverlay(drawerHead(p.protocolNo, p.product) + '<div class="drawer-b">' +
-      '<dl class="meta"><dt>Analyst Status</dt><dd>' + badge + "</dd></dl>" +
+      '<dl class="meta"><dt>Analyst Sign Off</dt><dd>' + badge + "</dd></dl>" +
       "</div>");
   }
 
