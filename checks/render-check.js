@@ -291,8 +291,8 @@ console.log("  10-day: official " + off + " -> early " + ep10.requestedDate + " 
 click(viewClick, { "data-act": "ep-new" });
 document.getElementById("epSample").value = "a7";
 change(ids["overlayRoot"]._h.change[0], "epSample");
-document.getElementById("epAdvance").value = "20";
-change(ids["overlayRoot"]._h.change[0], "epAdvance");
+document.getElementById("epReqDate").value = SD.dates.addDays(off, -20);
+change(ids["overlayRoot"]._h.change[0], "epReqDate");
 document.getElementById("epReason").value = "20 day test";
 click(overlayClick, { "data-act": "ep-save" });
 var ep20 = S.pulls[0];
@@ -419,8 +419,8 @@ if (nearS) {
   click(viewClick, { "data-act": "ep-new" });
   document.getElementById("epSample").value = nearS.sampleId;
   change(ids["overlayRoot"]._h.change[0], "epSample");
-  document.getElementById("epAdvance").value = "10";
-  change(ids["overlayRoot"]._h.change[0], "epAdvance");
+  document.getElementById("epReqDate").value = SD.dates.addDays(nearS.plannedWithdrawal, -10);
+  change(ids["overlayRoot"]._h.change[0], "epReqDate");
   document.getElementById("epReason").value = "due-window pull";
   click(overlayClick, { "data-act": "ep-save" });
   var nep = S.pulls[0];

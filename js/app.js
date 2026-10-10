@@ -2074,7 +2074,6 @@
   }
 
   /* ---------- R&D early pull form + workflow ---------- */
-  var EP_MAX_ADVANCE = 30; /* 1 month */
   var epCtx = { sample: null, official: null };
 
   function openEarlyPull(preselectRef) {
@@ -2096,7 +2095,10 @@
     var box = document.getElementById("epFields");
     if (!s) { epCtx = { sample: null, official: null }; box.innerHTML = '<div class="muted">No sample available for early pull (all schedule items may already be withdrawn).</div>'; return; }
     epCtx = { sample: s, official: s.plannedWithdrawal };
-    var def = 10;
+    var minReq = dates.addMonths(s.plannedWithdrawal, -1);
+    var defReq = dates.addDays(s.plannedWithdrawal, -10);
+    if (defReq < minReq) defReq = minReq;
+    var defAdv = dates.diffDays(defReq, s.plannedWithdrawal);
     box.innerHTML =
       '<dl class="meta"><dt>Protocol No</dt><dd>' + h(s.protocolNo) + "</dd>" +
       "<dt>Product</dt><dd>" + h(s.product) + "</dd>" +
@@ -2106,33 +2108,39 @@
       "<dt>Official Withdrawal Date</dt><dd>" + fmt(s.plannedWithdrawal) + "</dd></dl>" +
       '<input type="hidden" id="epOfficial" value="' + h(s.plannedWithdrawal) + '" />' +
       '<label class="fld" style="margin-top:10px">Early Pull Required</label><select class="select" id="epRequired"><option value="yes">Yes</option><option value="no">No</option></select>' +
-      '<label class="fld" style="margin-top:10px">Advance Days (0 = same date, max 1 month)</label><input class="input" type="number" id="epAdvance" min="0" max="' + EP_MAX_ADVANCE + '" value="' + def + '" />' +
-      '<label class="fld" style="margin-top:10px">Requested Pull Date (auto)</label><input class="input" id="epReqDate" readonly value="' + fmt(dates.addDays(s.plannedWithdrawal, -def)) + '" />' +
+      '<label class="fld" style="margin-top:10px">Requested Pull Date (any day up to 1 month before official)</label><input class="input" type="date" id="epReqDate" value="' + h(defReq) + '" />' +
+      '<label class="fld" style="margin-top:10px">Advance (auto — days earlier than official)</label><input class="input" id="epAdvanceShow" readonly value="' + defAdv + '" />' +
       '<label class="fld" style="margin-top:10px">Reason for Early Pull</label><input class="input" id="epReason" />' +
       '<label class="fld" style="margin-top:10px">Requested By</label><input class="input" id="epBy" value="' + h(S.currentUser) + '" />' +
       '<label class="fld" style="margin-top:10px">Priority</label><select class="select" id="epPriority"><option>Normal</option><option>Urgent</option></select>' +
       '<label class="fld" style="margin-top:10px">Remarks</label><input class="input" id="epRemarks" placeholder="Optional — e.g. meeting/request reference, urgency reason" />';
+    var reqEl = document.getElementById("epReqDate");
+    if (reqEl) reqEl.value = defReq;
+    var advShow = document.getElementById("epAdvanceShow");
+    if (advShow) advShow.value = defAdv;
   }
 
   function recomputeEp() {
-    var advEl = document.getElementById("epAdvance");
-    if (!advEl || !epCtx.official) return;
-    var adv = parseInt(advEl.value, 10);
     var req = document.getElementById("epReqDate");
-    if (req) req.value = (!isNaN(adv) && adv >= 0) ? fmt(dates.addDays(epCtx.official, -adv)) : "";
+    var advEl = document.getElementById("epAdvanceShow");
+    if (!req || !epCtx.official) return;
+    var adv = req.value ? dates.diffDays(req.value, epCtx.official) : null;
+    if (advEl) advEl.value = (adv === null ? "" : adv);
   }
 
   function epSave() {
     var s = epCtx.sample || sampleByRef(document.getElementById("epSample").value);
     if (!s) { alert("Choose a sample."); return; }
-    var advEl = document.getElementById("epAdvance");
-    var adv = parseInt(advEl.value, 10);
+    var reqEl = document.getElementById("epReqDate");
+    var requested = reqEl ? reqEl.value : "";
     var reason = document.getElementById("epReason").value.trim();
     if (!reason) { alert("Reason for early pull is required."); return; }
-    if (isNaN(adv) || adv < 0) { alert("Advance days cannot be negative."); return; }
-    if (adv > EP_MAX_ADVANCE) { alert("Advance can be at most 1 month (" + EP_MAX_ADVANCE + " days)."); return; }
+    if (!requested) { alert("Requested pull date is required."); return; }
     var official = epCtx.official || s.plannedWithdrawal;
-    var requested = dates.addDays(official, -adv);
+    var minReq = dates.addMonths(official, -1);
+    if (requested < minReq) { alert("Requested pull date cannot be more than 1 month before the official date (" + fmt(minReq) + ")."); return; }
+    if (requested > official) { alert("Requested pull date cannot be after the official date (" + fmt(official) + ")."); return; }
+    var adv = dates.diffDays(requested, official);
     var ep = {
       id: SD.ids.next(S, "ep"), sampleRef: s.sampleId, sampleInternalId: s.id, protocolId: s.protocolId,
       product: s.product, batch: s.batch, condition: s.storageCondition, timePointLabel: s.timePointLabel,
@@ -2541,7 +2549,7 @@
   function onOverlayChange(e) {
     if (e.target && e.target.id === "wsStp") renderWsTests();
     if (e.target && e.target.id === "epSample") renderEpFields();
-    if (e.target && e.target.id === "epAdvance") recomputeEp();
+    if (e.target && e.target.id === "epReqDate") recomputeEp();
     if (e.target && (e.target.id === "npTp" || e.target.id === "npTests")) renderNpSchedule();
     if (e.target && /^npCond/.test(e.target.id)) renderNpSchedule();
   }
@@ -2559,7 +2567,7 @@
   document.getElementById("view").addEventListener("keydown", onViewKeydown);
   overlay.addEventListener("click", onOverlayClick);
   overlay.addEventListener("change", onOverlayChange);
-  overlay.addEventListener("input", function (e) { if (e.target && e.target.id === "epAdvance") recomputeEp(); });
+  overlay.addEventListener("input", function (e) { if (e.target && e.target.id === "epReqDate") recomputeEp(); });
   window.addEventListener("hashchange", render);
 
   function setBackend(text, ok) {
