@@ -1384,7 +1384,7 @@
         '<tr><th>Quantity packed</th><td><input class="input" id="pkQty_' + i + '" value="' + h(p.timePoints.length + 1 + " time points") + '" /></td></tr>' +
         '<tr><th>Packing date</th><td><input class="input" type="date" id="pkDate_' + i + '" value="' + today() + '" /></td></tr>' +
         '<tr><th>Packed by</th><td><input class="input" id="pkBy_' + i + '" value="' + h(S.currentUser) + '" /></td></tr>' +
-        '<tr><th>Remarks</th><td><input class="input" id="pkRemarks_' + i + '" /></td></tr>' +
+        '<tr><th>Remarks</th><td><input class="input" id="pkRemarks_' + i + '" placeholder="Optional — e.g. no. of bags/containers used, any deviation" /></td></tr>' +
         "</tbody></table>";
     }).join("");
     openOverlay(drawerHead("Sample Packing", p.protocolNo + " · " + p.product) + '<div class="drawer-b">' +
