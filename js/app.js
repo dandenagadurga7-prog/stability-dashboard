@@ -998,12 +998,10 @@
       '<div class="eyebrow" style="margin-top:10px">Sample Details</div><ul class="proto-list">' + stItems + "</ul></div>" +
       "</div>" +
       '<table style="margin-top:10px"><tbody>' +
-      "<tr><th>Storage condition</th><td>" + conds.map(function (c, i) { return h(nthOrd(i + 1) + ": " + condText(c)); }).join("<br>") + "</td></tr>" +
-      "</tbody></table>" +
-      '<table style="margin-top:10px"><tbody>' +
       "<tr><th>Packing</th><td>" + packingHtml + "</td></tr>" +
       "</tbody></table>" +
-      '<table class="sched"><thead><tr><th class="num" colspan="' + (docCols.length + 1) + '" style="text-align:center">' + h(conds.map(condText).join("   ·   ")) + "</th></tr>" +
+      '<table class="sched"><thead>' +
+      conds.map(function (c, i) { return '<tr><th class="num" colspan="' + (docCols.length + 1) + '" style="text-align:center">' + h(nthOrd(i + 1) + ": " + condText(c)) + "</th></tr>"; }).join("") +
       '<tr><th>Schedule</th>' + docCols.map(function (l) {
         if (l.indexOf("Water content") === 0) return '<th class="num">Water content /<br>' + h((m.schedule && m.schedule.waterText) ? m.schedule.waterText : "LOD / TGA") + "</th>";
         if (l === "Other test") return '<th class="num">Other test /<br>' + h((m.schedule && m.schedule.otherTest) ? m.schedule.otherTest : "") + "</th>";
