@@ -255,14 +255,30 @@
     checklist: function (state, protocolId) {
       var pr = this.project(state, protocolId);
       var samples = this.samplesFor(state, protocolId);
+      var today = dates.todayISO();
+      function withdrawn(s) { return !!s.actualWithdrawal; }
+      function isInitial(s) { return s.timePointLabel === "Initial"; }
+      function notYetDue(s) { return !s.plannedWithdrawal || dates.diffDays(today, s.plannedWithdrawal) > 0; }
+      /* a withdrawal is "done" when every due sample is withdrawn and at least one real time point has been withdrawn */
+      function withdrawalDone() {
+        if (!samples.length) return false;
+        if (!samples.some(function (s) { return withdrawn(s) && !isInitial(s); })) return false;
+        return samples.every(function (s) { return withdrawn(s) || notYetDue(s); });
+      }
+      /* analysis is "done" when every withdrawn sample has been analysed */
+      function analysisDone() {
+        if (!samples.length) return false;
+        if (!samples.some(function (s) { return withdrawn(s) && !isInitial(s); })) return false;
+        return samples.every(function (s) { return !withdrawn(s) || !!s.analysisCompleteDate; });
+      }
       var steps = [
         { key: "protocol", label: "Protocol approved", done: this.protocolStatus(state, protocolId) === "APPROVED", detail: this.protocolStatus(state, protocolId) },
         { key: "packing", label: "Sample packed", done: !!pr.packing, detail: pr.packing ? pr.packing.packingId : "Not packed" },
         { key: "er", label: "ER number generated", done: !!pr.er, detail: pr.er ? pr.er.erNumber : "Pending" },
         { key: "loading", label: "Loaded into chamber", done: !!pr.loading, detail: pr.loading ? pr.loading.loadingId + " · " + pr.loading.chamberName : "Pending" },
         { key: "schedule", label: "Time-point schedule created", done: samples.length > 0, detail: samples.length + " time point(s)" },
-        { key: "withdrawal", label: "Samples withdrawn", done: samples.length > 0 && samples.every(function (s) { return !!s.actualWithdrawal; }), detail: samples.filter(function (s) { return s.actualWithdrawal; }).length + "/" + samples.length },
-        { key: "analysis", label: "Analysis completed", done: samples.length > 0 && samples.every(function (s) { return !!s.analysisCompleteDate; }), detail: samples.filter(function (s) { return s.analysisCompleteDate; }).length + "/" + samples.length },
+        { key: "withdrawal", label: "Samples withdrawn", done: withdrawalDone(), detail: samples.filter(function (s) { return s.actualWithdrawal; }).length + "/" + samples.length },
+        { key: "analysis", label: "Analysis completed", done: analysisDone(), detail: samples.filter(function (s) { return s.analysisCompleteDate; }).length + "/" + samples.length },
         { key: "documents", label: "Documentation generated", done: (pr.documents || []).length > 0, detail: (pr.documents || []).length + " document(s)" },
         { key: "report", label: "Final report approved", done: !!(pr.finalReport && pr.finalReport.status === "approved"), detail: pr.finalReport ? pr.finalReport.status : "not_started" }
       ];

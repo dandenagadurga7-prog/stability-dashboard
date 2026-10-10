@@ -431,6 +431,18 @@ click(overlayClick, { "data-act": "close-overlay" });
 
 }
 
+/* Withdrawal step ticks once every due sample is withdrawn (future time points do not block it) */
+var npidSamples = SD.lifecycle.samplesFor(S, npid);
+var dueUn = npidSamples.filter(function (s) { return s.timePointLabel !== "Initial" && !s.actualWithdrawal && s.plannedWithdrawal && s.plannedWithdrawal <= SD.dates.todayISO(); });
+dueUn.forEach(function (s) {
+  click(viewClick, { "data-act": "wd-open", "data-id": s.id });
+  document.getElementById("wdDate").value = SD.dates.todayISO();
+  click(overlayClick, { "data-act": "wd-save", "data-id": s.id });
+});
+var wstep = SD.lifecycle.checklist(S, npid).filter(function (x) { return x.key === "withdrawal"; })[0];
+if (!wstep || !wstep.done) failures.push("withdrawal step did not tick after all due samples withdrawn (" + (wstep ? wstep.detail : "?") + ")");
+else console.log("  withdrawal step ticked after all due samples withdrawn (" + wstep.detail + ")");
+
 function finish() {
   if (failures.length) { console.error("\nFAILURES:\n - " + failures.join("\n - ")); process.exit(1); }
   console.log("\nALL ROUTES + WORKFLOW: ok");
