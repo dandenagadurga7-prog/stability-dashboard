@@ -241,9 +241,15 @@
       var ap = pr.approvals || [];
       var last = ap[ap.length - 1];
       if (last && (last.action === "rejected" || last.action === "changes_requested")) return "CHANGES_REQUESTED";
-      if (ap.some(function (a) { return a.level === "Group Leader" && a.action === "approved"; })) return "APPROVED";
-      if (ap.some(function (a) { return a.level === "Reviewer" && a.action === "approved"; })) return "PENDING_GL";
-      if (ap.some(function (a) { return a.level === "Preparer"; })) return "UNDER_REVIEW";
+      /* only the current review cycle counts: approvals after the latest change request */
+      var start = 0;
+      for (var i = ap.length - 1; i >= 0; i--) {
+        if (ap[i].action === "changes_requested" || ap[i].action === "rejected") { start = i + 1; break; }
+      }
+      var cycle = ap.slice(start);
+      if (cycle.some(function (a) { return a.level === "Group Leader" && a.action === "approved"; })) return "APPROVED";
+      if (cycle.some(function (a) { return a.level === "Reviewer" && a.action === "approved"; })) return "PENDING_GL";
+      if (cycle.some(function (a) { return a.level === "Preparer"; })) return "UNDER_REVIEW";
       return "DRAFT";
     },
     checklist: function (state, protocolId) {

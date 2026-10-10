@@ -323,6 +323,34 @@ var vErrors = SD.store.validateSample({ product: "", batch: "", plannedWithdrawa
 if (!vErrors.length) failures.push("validation accepted an empty record");
 else console.log("  validation rejected empty record: " + vErrors.length + " error(s)");
 
+/* Change request -> edit only what was asked -> resubmit re-enters review */
+console.log("\nChange request: edit -> resubmit (protocol number unchanged)");
+click(viewClick, { "data-act": "new-protocol" });
+document.getElementById("npProduct").value = "CR Drug";
+document.getElementById("npCode").value = "CR";
+document.getElementById("npBatch").value = "CR-001";
+click(overlayClick, { "data-act": "np-save" });
+var crp = S.protocols[S.protocols.length - 1];
+if (!crp || crp.product !== "CR Drug") failures.push("CR protocol not created");
+else {
+  var crNoBefore = crp.protocolNo;
+  click(viewClick, { "data-act": "proto-submit", "data-id": crp.id });
+  click(viewClick, { "data-act": "proto-changes", "data-id": crp.id });
+  document.getElementById("pcComment").value = "Change packing details";
+  click(overlayClick, { "data-act": "proto-changes-save", "data-id": crp.id });
+  var crStatus = SD.lifecycle.protocolStatus(S, crp.id);
+  if (crStatus !== "CHANGES_REQUESTED") failures.push("status after change request = " + crStatus);
+  console.log("  after change request -> " + crStatus);
+  click(viewClick, { "data-act": "proto-edit", "data-id": crp.id });
+  document.getElementById("npPackInner").value = "Corrected LDPE bag, nitrogen purged";
+  click(overlayClick, { "data-act": "np-update", "data-id": crp.id });
+  var crStatus2 = SD.lifecycle.protocolStatus(S, crp.id);
+  if (crStatus2 !== "UNDER_REVIEW") failures.push("status after resubmit = " + crStatus2);
+  if (crp.protocolNo !== crNoBefore) failures.push("protocol number changed on edit: " + crNoBefore + " -> " + crp.protocolNo);
+  if (!crp.protocolMeta || !crp.protocolMeta.packing || crp.protocolMeta.packing.innermost !== "Corrected LDPE bag, nitrogen purged") failures.push("edited packing not saved");
+  console.log("  after edit + resubmit -> " + crStatus2 + ", number unchanged = " + (crp.protocolNo === crNoBefore));
+}
+
 function finish() {
   if (failures.length) { console.error("\nFAILURES:\n - " + failures.join("\n - ")); process.exit(1); }
   console.log("\nALL ROUTES + WORKFLOW: ok");

@@ -1003,6 +1003,7 @@
     var reviewBtns = "";
     if (ps === "UNDER_REVIEW") reviewBtns = '<button class="btn primary" data-act="proto-review-approve" data-id="' + id + '">Reviewer: approve</button> <button class="btn danger" data-act="proto-changes" data-id="' + id + '">Request changes</button> ';
     else if (ps === "PENDING_GL") reviewBtns = '<button class="btn primary" data-act="proto-gl-approve" data-id="' + id + '">Group Leader: approve</button> <button class="btn danger" data-act="proto-changes" data-id="' + id + '">Request changes</button> ';
+    else if (ps === "CHANGES_REQUESTED") reviewBtns = '<button class="btn primary" data-act="proto-edit" data-id="' + id + '">Edit protocol &amp; resubmit</button> ';
     return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> ' + reviewBtns + '<button class="btn" onclick="window.print()">Print / PDF</button></div>' +
       '<div class="report-preview">' +
       '<div class="rp-head"><div><h2 style="text-align:left">HETERO (R&amp;D)<br><small style="font-weight:400;font-size:11px;color:var(--muted)">KAZIPALLY</small></h2><div style="color:var(--muted);font-size:11px">STABILITY PROTOCOL</div></div>' +
@@ -1415,10 +1416,115 @@
     return '<label class="check" style="cursor:pointer"><input type="checkbox" id="' + id + '"' + (checked ? " checked" : "") + ' /> <div class="c-label">' + h(label) + "</div></label>";
   }
 
-  function openNewProtocol() {
-    var testOptions = S.testLibrary.map(function (t) { return '<option value="' + h(t.id) + '"' + (["anz_description", "anz_ir", "anz_water", "anz_assay", "anz_rel_total"].indexOf(t.id) >= 0 ? " selected" : "") + ">" + h(t.name) + "</option>"; }).join("");
-    openOverlay(drawerHead("New Stability Protocol", "Analytical Research & Development (ARD)") + '<div class="drawer-b">' +
-      '<div class="notice info">Fill this in your company format. The protocol is created as <strong>DRAFT</strong>; after submission it goes to Reviewer then Group Leader sign-off.</div>' +
+  function openNewProtocol() { openProtocolForm(null); }
+
+  function prefillProtocolForm(p) {
+    var m = p.protocolMeta || {};
+    function setv(id, val) { var el = document.getElementById(id); if (el) el.value = val == null ? "" : val; }
+    function check(id, on) { var el = document.getElementById(id); if (el) el.checked = !!on; }
+    function has(arr, x) { return (arr || []).indexOf(x) >= 0; }
+    setv("npProduct", p.product);
+    setv("npBatch", (p.batches || [])[0] || "");
+    setv("npCode", m.projectCode || p.productCode || "");
+    setv("npMfg", m.manufacturingLocation || "");
+    setv("npStpNo", m.stpNo || "");
+    setv("npDateIn", m.dateIn || today());
+    check("npReason1", has(m.reason, "1. New product"));
+    check("npReason2", has(m.reason, "2. New process / polymorph"));
+    check("npReason3", has(m.reason, "3. Others (specify)"));
+    setv("npReasonOther", m.reasonOther || "");
+    check("npEncA", has(m.enclosures, "A. Initial Certificate of Analysis"));
+    check("npEncB", has(m.enclosures, "B. Requested tests related documents"));
+    check("npEncC", has(m.enclosures, "C. Any other (specify)"));
+    check("npCondA", has(m.sampleConditions, "A. 40±2°C / 75±5% RH"));
+    check("npCondB", has(m.sampleConditions, "B. 25±2°C / 60±5% RH"));
+    check("npCondC", has(m.sampleConditions, "C. 5±3°C"));
+    check("npCondD", has(m.sampleConditions, "D. -20°C±5°C"));
+    check("npCondE", has(m.sampleConditions, "E. Extra samples loaded"));
+    check("npCondF", has(m.sampleConditions, "F. Any other (specify)"));
+    setv("npCondOther", m.sampleConditionOther || "");
+    var st = m.sampleType || "1  Lab sample";
+    check("npSampleType1", st.indexOf("1") === 0);
+    check("npSampleType2", st.indexOf("2") === 0);
+    check("npSampleType3", st.indexOf("3") === 0);
+  }
+
+  function prefillSchedule(p) {
+    var m = p.protocolMeta || {}, sch = m.schedule || {}, pk = m.packing || {};
+    function setv(id, val) { var el = document.getElementById(id); if (el) el.value = val == null ? "" : val; }
+    setv("npPackInner", pk.innermost || "");
+    setv("npPackMiddle", pk.middle || "");
+    setv("npPackOuter", pk.outermost || "");
+    (sch.conditions || []).forEach(function (cond, ci) {
+      setv("npWaterText_" + ci, cond.waterText || "");
+      setv("npRelatedText_" + ci, cond.relatedText || "");
+      setv("npOtherTest_" + ci, cond.otherText || "");
+      (cond.rows || []).forEach(function (row, ri) {
+        (row.marks || []).forEach(function (mk, ti) {
+          var el = document.getElementById("npSc_" + ci + "_" + ri + "_" + ti);
+          if (el) el.value = (mk === true ? "\u2713" : mk === false ? "X" : (mk == null ? "" : mk));
+        });
+      });
+    });
+  }
+
+  function readProtocolForm() {
+    function chk(cid) { var el = document.getElementById(cid); return !!(el && el.checked); }
+    function val(cid) { var el = document.getElementById(cid); return el ? String(el.value).trim() : ""; }
+    var reasons = [];
+    if (chk("npReason1")) reasons.push("1. New product");
+    if (chk("npReason2")) reasons.push("2. New process / polymorph");
+    if (chk("npReason3")) reasons.push("3. Others (specify)");
+    var conds = [];
+    if (chk("npCondA")) conds.push("A. 40±2°C / 75±5% RH");
+    if (chk("npCondB")) conds.push("B. 25±2°C / 60±5% RH");
+    if (chk("npCondC")) conds.push("C. 5±3°C");
+    if (chk("npCondD")) conds.push("D. -20°C±5°C");
+    if (chk("npCondE")) conds.push("E. Extra samples loaded");
+    if (chk("npCondF")) conds.push("F. Any other (specify)");
+    var at = [];
+    ["A", "B", "C", "D", "E", "F"].forEach(function (l) { if (chk("npAt" + l)) at.push(l); });
+    var enc = [];
+    if (chk("npEncA")) enc.push("A. Initial Certificate of Analysis");
+    if (chk("npEncB")) enc.push("B. Requested tests related documents");
+    if (chk("npEncC")) enc.push("C. Any other (specify)");
+    var sampleType = chk("npSampleType2") ? "2  Lab validation sample" : (chk("npSampleType3") ? "3  Others (specify)" : "1  Lab sample");
+    var packing = { innermost: val("npPackInner"), middle: val("npPackMiddle"), outermost: val("npPackOuter") };
+    var schedule = readNpSchedule();
+    return {
+      product: val("npProduct"), batch: val("npBatch"), code: val("npCode"),
+      mfg: val("npMfg"), stpNo: val("npStpNo"), dateIn: val("npDateIn"),
+      reasons: reasons, reasonOther: val("npReasonOther"), conds: conds, condOther: val("npCondOther"),
+      studyAt: at, enclosures: enc, sampleType: sampleType,
+      packing: packing,
+      packingText: [packing.innermost, packing.middle, packing.outermost].filter(Boolean).join(" "),
+      schedule: schedule,
+      tests: mapSchedTests(),
+      meta: {
+        formNo: "F-01-01/ARD015", effectiveDate: "2022-11-26", department: "Analytical Research & Development",
+        drugSubstance: val("npProduct"), batch: val("npBatch"), reason: reasons, reasonOther: val("npReasonOther"),
+        sampleConditions: conds, sampleConditionOther: val("npCondOther"), studyAt: at, enclosures: enc, sampleType: sampleType,
+        manufacturingLocation: val("npMfg"), stpNo: val("npStpNo"), projectCode: val("npCode"), dateIn: val("npDateIn"),
+        preparedBy: S.currentUser, reviewedBy: "", approvedBy: "", approvedByArd: "",
+        packing: packing, schedule: schedule
+      }
+    };
+  }
+
+  function openProtocolForm(editId) {
+    var editing = !!editId;
+    var ep = editing ? protocolOf(editId) : null;
+    if (editing && !ep) return;
+    var changeNote = "";
+    if (editing) {
+      var prj = projectOf(editId);
+      var crs = (prj.approvals || []).filter(function (a) { return a.action === "changes_requested"; });
+      var lc = crs[crs.length - 1];
+      if (lc) changeNote = '<div class="notice"><strong>Change requested by ' + h(lc.level) + ':</strong> ' + h(lc.comment || "") + "</div>";
+    }
+    openOverlay(drawerHead(editing ? "Edit Stability Protocol" : "New Stability Protocol", "Analytical Research & Development (ARD)") + '<div class="drawer-b">' +
+      '<div class="notice info">' + (editing ? "Change only what the Reviewer asked for, then save and resubmit. The protocol number stays the same." : "Fill this in your company format. The protocol is created as <strong>DRAFT</strong>; after submission it goes to Reviewer then Group Leader sign-off.") + "</div>" +
+      changeNote +
       '<div class="eyebrow">Identification</div>' +
       '<label class="fld" style="margin-top:6px">Drug substance</label><input class="input" id="npProduct" placeholder="e.g. Anastrozole" />' +
       '<div class="grid-2" style="margin-top:8px">' +
@@ -1457,10 +1563,13 @@
       '<div class="eyebrow" style="margin-top:14px">E-Signatures (automatic)</div>' +
       '<p class="muted" style="font-size:12px;margin-top:4px"><strong>' + h(S.currentUser) + "</strong> will sign as <strong>Prepared By (Analyst)</strong> when this protocol is submitted. Reviewer and Approver names are captured automatically when they approve.</p>" +
 
-      '<div style="margin-top:16px"><button class="btn primary" data-act="np-save">Create protocol (Draft)</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
-      '<p class="muted" style="margin-top:10px">After creating, open the protocol and use <strong>Submit for review</strong> to send it for Reviewer and Group Leader sign-off.</p>' +
+      '<div style="margin-top:16px">' +
+      (editing ? '<button class="btn primary" data-act="np-update" data-id="' + h(editId) + '">Save changes &amp; resubmit</button>' : '<button class="btn primary" data-act="np-save">Create protocol (Draft)</button>') +
+      ' <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
+      '<p class="muted" style="margin-top:10px">' + (editing ? "Saving sends the protocol back for Reviewer sign-off; the earlier change request stays in the approval history." : "After creating, open the protocol and use <strong>Submit for review</strong> to send it for Reviewer and Group Leader sign-off.") + "</p>" +
       "</div>");
     renderNpSchedule();
+    if (editing) { prefillProtocolForm(ep); renderNpSchedule(); prefillSchedule(ep); }
   }
 
   function npScheduleRows() {
@@ -1999,6 +2108,7 @@
       if (confirm("Reset all data to the labelled demo seed?")) { store.reset(SD.seed); S = store.state; SD.lifecycle.ensure(S); render(); }
     }
     else if (act === "new-protocol") openNewProtocol();
+    else if (act === "proto-edit") openProtocolForm(id);
     else if (act === "pack-open") openPack(id);
     else if (act === "er-generate") doErGenerate(id);
     else if (act === "load-open") openLoad(id);
@@ -2133,59 +2243,53 @@
       generateScheduleForLoading(lp, lpr.loading);
       store.save(); closeOverlay(); render();
     } else if (act === "np-save") {
-      var product = document.getElementById("npProduct").value.trim();
-      var batch = document.getElementById("npBatch").value.trim();
-      if (!product || !batch) { alert("Product and batch are required."); return; }
-      var tps = [1, 2, 3, 6, 9, 12];
-      var tests = mapSchedTests();
-      if (!tests.length) tests = (S.testLibrary || []).slice(0, 6).map(function (t) { return t.id; });
-      function chk(cid) { var el = document.getElementById(cid); return !!(el && el.checked); }
-      function val(cid) { var el = document.getElementById(cid); return el ? String(el.value).trim() : ""; }
-      var reasons = [];
-      if (chk("npReason1")) reasons.push("1. New product");
-      if (chk("npReason2")) reasons.push("2. New process / polymorph");
-      if (chk("npReason3")) reasons.push("3. Others (specify)");
-      var conds = [];
-      if (chk("npCondA")) conds.push("A. 40±2°C / 75±5% RH");
-      if (chk("npCondB")) conds.push("B. 25±2°C / 60±5% RH");
-      if (chk("npCondC")) conds.push("C. 5±3°C");
-      if (chk("npCondD")) conds.push("D. -20°C±5°C");
-      if (chk("npCondE")) conds.push("E. Extra samples loaded");
-      if (chk("npCondF")) conds.push("F. Any other (specify)");
-      var at = [];
-      ["A", "B", "C", "D", "E", "F"].forEach(function (l) { if (chk("npAt" + l)) at.push(l); });
-      var enc = [];
-      if (chk("npEncA")) enc.push("A. Initial Certificate of Analysis");
-      if (chk("npEncB")) enc.push("B. Requested tests related documents");
-      if (chk("npEncC")) enc.push("C. Any other (specify)");
-      var sampleType = chk("npSampleType2") ? "2  Lab validation sample" : (chk("npSampleType3") ? "3  Others (specify)" : "1  Lab sample");
+      var f = readProtocolForm();
+      if (!f.product || !f.batch) { alert("Product and batch are required."); return; }
       var nid = "p" + Date.now();
       var autoNo = SD.ids.next(S, "prot"); /* STB-PROT-<year>-<seq> */
       var npParts = autoNo.split("-");
-      var pcode = (val("npCode") || "PROT").toUpperCase().replace(/[^A-Z0-9]/g, "") || "PROT";
+      var pcode = (f.code || "PROT").toUpperCase().replace(/[^A-Z0-9]/g, "") || "PROT";
       var protoNo = "STB-" + pcode + "-" + (npParts[2] || "") + "-" + (npParts[3] || "");
-      var newProto = {
-        id: nid, protocolNo: protoNo, product: product,
-        productCode: val("npCode") || "—", apiOrForm: "Drug substance",
-        storageCondition: val("npCondition") || "25°C ± 2°C / 60% RH ± 5% RH", humidity: "NA",
-        pack: [val("npPackInner"), val("npPackMiddle"), val("npPackOuter")].filter(Boolean).join(" ") || "Not specified", batches: [batch],
-        timePoints: tps, tests: tests, effectiveDate: today(), version: "V1.0", status: "Active",
-        reason: reasons.join("; ") || "—", projectCode: val("npCode") || "—",
-        manufacturingLocation: val("npMfg"), dateIn: val("npDateIn"),
-        protocolMeta: {
-          formNo: "F-01-01/ARD015", effectiveDate: "2022-11-26", department: "Analytical Research & Development",
-          drugSubstance: product, batch: batch, reason: reasons, reasonOther: val("npReasonOther"),
-          sampleConditions: conds, sampleConditionOther: val("npCondOther"), studyAt: at, enclosures: enc, sampleType: sampleType,
-          manufacturingLocation: val("npMfg"), stpNo: val("npStpNo"), projectCode: val("npCode"), dateIn: val("npDateIn"),
-          preparedBy: S.currentUser, reviewedBy: "", approvedBy: "", approvedByArd: "",
-          packing: { innermost: val("npPackInner"), middle: val("npPackMiddle"), outermost: val("npPackOuter") },
-          schedule: readNpSchedule()
-        }
-      };
-      S.protocols.push(newProto);
+      S.protocols.push({
+        id: nid, protocolNo: protoNo, product: f.product,
+        productCode: f.code || "—", apiOrForm: "Drug substance",
+        storageCondition: "25°C ± 2°C / 60% RH ± 5% RH", humidity: "NA",
+        pack: f.packingText || "Not specified", batches: [f.batch],
+        timePoints: [1, 2, 3, 6, 9, 12], tests: f.tests.length ? f.tests : (S.testLibrary || []).slice(0, 6).map(function (t) { return t.id; }),
+        effectiveDate: today(), version: "V1.0", status: "Active",
+        reason: f.reasons.join("; ") || "—", projectCode: f.code || "—",
+        manufacturingLocation: f.mfg, dateIn: f.dateIn,
+        protocolMeta: f.meta
+      });
       SD.lifecycle.ensure(S);
-      store.audit({ user: S.currentUser, action: "create", entity: "protocol", entityId: newProto.protocolNo, note: "Protocol created (company format, draft)" });
+      store.audit({ user: S.currentUser, action: "create", entity: "protocol", entityId: protoNo, note: "Protocol created (company format, draft)" });
       store.save(); closeOverlay(); location.hash = "#/project/" + nid; render();
+    } else if (act === "np-update") {
+      var up = readProtocolForm();
+      var upProto = protocolOf(id);
+      if (!upProto) return;
+      if (!up.product || !up.batch) { alert("Product and batch are required."); return; }
+      upProto.product = up.product;
+      upProto.batches = [up.batch];
+      upProto.productCode = up.code || upProto.productCode;
+      upProto.pack = up.packingText || upProto.pack;
+      upProto.reason = up.reasons.join("; ") || upProto.reason;
+      upProto.projectCode = up.code || upProto.projectCode;
+      upProto.manufacturingLocation = up.mfg;
+      upProto.dateIn = up.dateIn;
+      if (up.tests.length) upProto.tests = up.tests;
+      var um = upProto.protocolMeta || (upProto.protocolMeta = {});
+      um.drugSubstance = up.product; um.batch = up.batch;
+      um.reason = up.reasons; um.reasonOther = up.reasonOther;
+      um.sampleConditions = up.conds; um.sampleConditionOther = up.condOther;
+      um.studyAt = up.studyAt; um.enclosures = up.enclosures; um.sampleType = up.sampleType;
+      um.manufacturingLocation = up.mfg; um.stpNo = up.stpNo; um.projectCode = up.code; um.dateIn = up.dateIn;
+      um.packing = up.packing;
+      um.schedule = up.schedule;
+      store.audit({ user: S.currentUser, action: "update", entity: "protocol", entityId: upProto.protocolNo, note: "Protocol edited after change request" });
+      closeOverlay();
+      approveAction(id, "Preparer", "submitted", "Resubmitted after changes");
+      location.hash = "#/protocoldoc/" + id; render();
     } else if (act === "nu-save") {
       var uname = document.getElementById("nuName").value.trim();
       if (!uname) { alert("Name is required."); return; }
