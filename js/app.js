@@ -2172,8 +2172,12 @@
       if (chk("npEncC")) enc.push("C. Any other (specify)");
       var sampleType = chk("npSampleType2") ? "2  Lab validation sample" : (chk("npSampleType3") ? "3  Others (specify)" : "1  Lab sample");
       var nid = "p" + Date.now();
+      var autoNo = SD.ids.next(S, "prot"); /* STB-PROT-<year>-<seq> */
+      var npParts = autoNo.split("-");
+      var pcode = (val("npCode") || "PROT").toUpperCase().replace(/[^A-Z0-9]/g, "") || "PROT";
+      var protoNo = "STB-" + pcode + "-" + (npParts[2] || "") + "-" + (npParts[3] || "");
       var newProto = {
-        id: nid, protocolNo: SD.ids.next(S, "prot"), product: product,
+        id: nid, protocolNo: protoNo, product: product,
         productCode: val("npCode") || "—", apiOrForm: "Drug substance",
         storageCondition: val("npCondition") || "25°C ± 2°C / 60% RH ± 5% RH", humidity: "NA",
         pack: [val("npPackInner"), val("npPackMiddle"), val("npPackOuter")].filter(Boolean).join(" ") || "Not specified", batches: [batch],
