@@ -2074,7 +2074,7 @@
   }
 
   /* ---------- R&D early pull form + workflow ---------- */
-  var EP_ADVANCES = [1, 3, 5, 7, 10, 15, 20];
+  var EP_MAX_ADVANCE = 30; /* 1 month */
   var epCtx = { sample: null, official: null };
 
   function openEarlyPull(preselectRef) {
@@ -2106,10 +2106,7 @@
       "<dt>Official Withdrawal Date</dt><dd>" + fmt(s.plannedWithdrawal) + "</dd></dl>" +
       '<input type="hidden" id="epOfficial" value="' + h(s.plannedWithdrawal) + '" />' +
       '<label class="fld" style="margin-top:10px">Early Pull Required</label><select class="select" id="epRequired"><option value="yes">Yes</option><option value="no">No</option></select>' +
-      '<label class="fld" style="margin-top:10px">Advance Days</label><select class="select" id="epAdvance">' +
-      EP_ADVANCES.map(function (d) { return '<option value="' + d + '"' + (d === def ? " selected" : "") + ">" + d + "</option>"; }).join("") +
-      '<option value="custom">Custom</option></select>' +
-      '<div id="epCustomWrap" style="display:none;margin-top:8px"><label class="fld">Custom advance days</label><input class="input" type="number" min="1" id="epCustom" value="' + def + '" /></div>' +
+      '<label class="fld" style="margin-top:10px">Advance Days (0 = same date, max 1 month)</label><input class="input" type="number" id="epAdvance" min="0" max="' + EP_MAX_ADVANCE + '" value="' + def + '" />' +
       '<label class="fld" style="margin-top:10px">Requested Pull Date (auto)</label><input class="input" id="epReqDate" readonly value="' + fmt(dates.addDays(s.plannedWithdrawal, -def)) + '" />' +
       '<label class="fld" style="margin-top:10px">Reason for Early Pull</label><input class="input" id="epReason" />' +
       '<label class="fld" style="margin-top:10px">Requested By</label><input class="input" id="epBy" value="' + h(S.currentUser) + '" />' +
@@ -2120,21 +2117,20 @@
   function recomputeEp() {
     var advEl = document.getElementById("epAdvance");
     if (!advEl || !epCtx.official) return;
-    var wrap = document.getElementById("epCustomWrap");
-    if (wrap) wrap.style.display = advEl.value === "custom" ? "block" : "none";
-    var adv = advEl.value === "custom" ? parseInt((document.getElementById("epCustom") || {}).value, 10) : parseInt(advEl.value, 10);
+    var adv = parseInt(advEl.value, 10);
     var req = document.getElementById("epReqDate");
-    if (req) req.value = (adv > 0) ? fmt(dates.addDays(epCtx.official, -adv)) : "";
+    if (req) req.value = (!isNaN(adv) && adv >= 0) ? fmt(dates.addDays(epCtx.official, -adv)) : "";
   }
 
   function epSave() {
     var s = epCtx.sample || sampleByRef(document.getElementById("epSample").value);
     if (!s) { alert("Choose a sample."); return; }
     var advEl = document.getElementById("epAdvance");
-    var adv = advEl.value === "custom" ? parseInt(document.getElementById("epCustom").value, 10) : parseInt(advEl.value, 10);
+    var adv = parseInt(advEl.value, 10);
     var reason = document.getElementById("epReason").value.trim();
     if (!reason) { alert("Reason for early pull is required."); return; }
-    if (!(adv > 0)) { alert("Advance days must be greater than 0."); return; }
+    if (isNaN(adv) || adv < 0) { alert("Advance days cannot be negative."); return; }
+    if (adv > EP_MAX_ADVANCE) { alert("Advance can be at most 1 month (" + EP_MAX_ADVANCE + " days)."); return; }
     var official = epCtx.official || s.plannedWithdrawal;
     var requested = dates.addDays(official, -adv);
     var ep = {
@@ -2540,7 +2536,7 @@
   function onOverlayChange(e) {
     if (e.target && e.target.id === "wsStp") renderWsTests();
     if (e.target && e.target.id === "epSample") renderEpFields();
-    if (e.target && (e.target.id === "epAdvance" || e.target.id === "epCustom")) recomputeEp();
+    if (e.target && e.target.id === "epAdvance") recomputeEp();
     if (e.target && (e.target.id === "npTp" || e.target.id === "npTests")) renderNpSchedule();
     if (e.target && /^npCond/.test(e.target.id)) renderNpSchedule();
   }
@@ -2558,6 +2554,7 @@
   document.getElementById("view").addEventListener("keydown", onViewKeydown);
   overlay.addEventListener("click", onOverlayClick);
   overlay.addEventListener("change", onOverlayChange);
+  overlay.addEventListener("input", function (e) { if (e.target && e.target.id === "epAdvance") recomputeEp(); });
   window.addEventListener("hashchange", render);
 
   function setBackend(text, ok) {
