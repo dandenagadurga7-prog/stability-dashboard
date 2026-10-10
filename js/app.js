@@ -1481,7 +1481,10 @@
   function renderNpSchedule() {
     var el = document.getElementById("npSchedule");
     if (!el) return;
-    var head = "<tr><th>Schedule</th>" + SCHED_ROWS.map(function (n) {
+    var condPairs = [["npCondA", "40±2°C / 75±5% RH"], ["npCondB", "25±2°C / 60±5% RH"], ["npCondC", "5±3°C"], ["npCondD", "-20°C±5°C"], ["npCondE", "Extra samples loaded"], ["npCondF", "Any other (specify)"]];
+    var condLabels = condPairs.filter(function (p) { var el = document.getElementById(p[0]); return el && el.checked; }).map(function (p) { return p[1]; });
+    var head = '<tr><th class="num" colspan="' + (SCHED_ROWS.length + 1) + '" style="text-align:center">' + h(condLabels.join("   ·   ")) + "</th></tr>" +
+      "<tr><th>Schedule</th>" + SCHED_ROWS.map(function (n) {
       var extra = "";
       if (n.indexOf("Water content") === 0) extra = '<br><input class="input" id="npWaterText" placeholder="type one" style="width:112px;margin-top:4px" />';
       if (n.indexOf("Related compounds") === 0) extra = '<br><input class="input" id="npRelatedText" placeholder="type HPLC / GC" style="width:112px;margin-top:4px" />';
@@ -1497,8 +1500,7 @@
           '<option value="@">@</option></select></td>';
       }).join("") + "</tr>";
     }).join("");
-    el.innerHTML = '<div class="eyebrow" style="margin-top:14px">Schedule</div>' +
-      '<div class="table-wrap"><table class="data sched"><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>" +
+    el.innerHTML = '<div class="table-wrap" style="margin-top:14px"><table class="data sched"><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>" +
       '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>';
   }
 
@@ -2189,6 +2191,7 @@
     if (e.target && e.target.id === "epSample") renderEpFields();
     if (e.target && (e.target.id === "epAdvance" || e.target.id === "epCustom")) recomputeEp();
     if (e.target && (e.target.id === "npTp" || e.target.id === "npTests")) renderNpSchedule();
+    if (e.target && /^npCond/.test(e.target.id)) renderNpSchedule();
   }
 
   /* ---------- boot ---------- */
