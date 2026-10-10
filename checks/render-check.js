@@ -330,6 +330,7 @@ document.getElementById("npCode").value = "CR";
 document.getElementById("npBatch").value = "CR-001";
 document.getElementById("npCondA").checked = true;
 document.getElementById("npCondB").checked = true;
+document.getElementById("npCondC").checked = true;
 click(overlayClick, { "data-act": "np-save" });
 var crp = S.protocols[S.protocols.length - 1];
 if (!crp || crp.product !== "CR Drug") failures.push("CR protocol not created");
@@ -362,14 +363,15 @@ else {
   click(viewClick, { "data-act": "load-open", "data-id": crp.id });
   var lHtml = ids["overlayRoot"].innerHTML;
   var lConds = (lHtml.match(/Condition \d+: /g) || []).length;
-  if (lHtml.indexOf("loadChamber_0") < 0 || lHtml.indexOf("loadChamber_1") < 0) failures.push("loading drawer missing per-condition chambers");
+  if (lHtml.indexOf("loadChamber_0") < 0 || lHtml.indexOf("loadChamber_2") < 0) failures.push("loading drawer missing per-condition chambers");
   else console.log("  loading drawer shows " + lConds + " condition(s)");
   document.getElementById("loadChamber_0").value = "CH-01";
   document.getElementById("loadChamber_1").value = "CH-01";
+  document.getElementById("loadChamber_2").value = "CH-01";
   click(overlayClick, { "data-act": "load-save", "data-id": crp.id });
   var gen2 = SD.lifecycle.samplesFor(S, crp.id);
-  if (gen2.length !== 14) failures.push("loading schedule wrong: expected 14 (2 conditions x 7), got " + gen2.length);
-  else console.log("  loading created " + gen2.length + " samples across 2 conditions");
+  if (gen2.length !== 21) failures.push("loading schedule wrong: expected 21 (3 conditions x 7), got " + gen2.length);
+  else console.log("  loading created " + gen2.length + " samples across 3 conditions");
   /* add a missed condition back without touching what is already loaded */
   var cprj = SD.lifecycle.project(S, crp.id);
   var dropCond = cprj.loading.conditions[1].condition;
@@ -381,9 +383,9 @@ else {
   document.getElementById("laChamber_0").value = "CH-01";
   click(overlayClick, { "data-act": "load-add-save", "data-id": crp.id });
   var gen3 = SD.lifecycle.samplesFor(S, crp.id);
-  if (gen3.length !== 14) failures.push("add condition wrong: expected 14 samples, got " + gen3.length);
-  if (SD.lifecycle.project(S, crp.id).loading.conditions.length !== 2) failures.push("loading conditions not restored to 2");
-  else console.log("  added missed condition -> " + gen3.length + " samples, 2 conditions");
+  if (gen3.length !== 21) failures.push("add condition wrong: expected 21 samples, got " + gen3.length);
+  if (SD.lifecycle.project(S, crp.id).loading.conditions.length !== 3) failures.push("loading conditions not restored to 3");
+  else console.log("  added missed condition -> " + gen3.length + " samples, 3 conditions");
 }
 
 function finish() {
