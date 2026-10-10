@@ -129,7 +129,8 @@ goto("#/project/panz", "Lifecycle");
 goto("#/protocoldoc/panz", "Reason(s) for Stability study");
 goto("#/datasheet/panz", "Cumulative data sheet");
 goto("#/datasheet/p0", "Cumulative data sheet");
-goto("#/earlypull", "R&amp;D Early Pull");
+/* R&D Early Pull was removed from the UI (nav), so #/earlypull falls back to the dashboard */
+goto("#/earlypull", "Monthly Workload");
 goto("#/sample/t1", "Trofinetide");
 goto("#/reports/t1", "Analysis scheduled date");
 goto("#/reports/t1", "Packing conditions");

@@ -162,7 +162,6 @@
     ["chambers", "\u25A6", "Chamber Management", "#/chambers"],
     ["loading", "\u21E3", "Chamber Loading", "#/loading"],
     ["withdrawals", "\u21E1", "Withdrawal / Pulling", "#/withdrawals"],
-    ["earlypull", "\u231B", "R&D Early Pull", "#/earlypull"],
     ["analysis", "\u2315", "Analysis", "#/analysis"],
     ["documentation", "\u2630", "Documentation", "#/documentation"],
     ["final-reports", "\u2637", "Final Reports", "#/final-reports"],
@@ -656,9 +655,7 @@
     var epApprovedItems = (S.pulls || []).filter(function (ep) { return ep.status === "APPROVED"; })
       .map(function (ep) { var n = dates.diffDays(t, ep.requestedDate); return n <= 7 ? { ep: ep, n: n } : null; }).filter(Boolean)
       .map(function (x) { var s = sampleByRef(x.ep.sampleRef); return s ? { s: s, label: (x.n < 0 ? "Overdue · " : "Due in " + x.n + "d · ") + x.ep.id } : null; }).filter(Boolean);
-    return '<div class="grid-3">' + col("Today", dueToday, "warn") + col("Next 7 Days", upcoming, "info") + col("Overdue", overdue, "danger") + "</div>" +
-      '<h3 class="section-title">R&amp;D Early Pull <span class="hint">add-on approvals, official schedule unchanged</span></h3>' +
-      '<div class="grid-3">' + col("Awaiting Reviewer", epReviewer, "warn") + col("Awaiting Group Leader", epGL, "warn") + col("Approved – due / overdue", epApprovedItems, "info") + "</div>";
+    return '<div class="grid-3">' + col("Today", dueToday, "warn") + col("Next 7 Days", upcoming, "info") + col("Overdue", overdue, "danger") + "</div>";
   };
 
   function auditRow(a) {
@@ -781,17 +778,14 @@
   VIEWS.withdrawals = function () {
     var open = S.samples.filter(function (s) { return !s.actualWithdrawal; }).sort(function (a, b) { return (a.plannedWithdrawal || "").localeCompare(b.plannedWithdrawal || ""); });
     var rows = open.length ? open.map(function (s) {
-      var d = computeDatesFor(s), st = statusOf(s), pr = projectOf(s.protocolId), ep = latestPull(s.sampleId);
+      var d = computeDatesFor(s), st = statusOf(s), pr = projectOf(s.protocolId);
       return "<tr><td>" + (pr.er ? h(pr.er.erNumber) : "—") + '</td><td class="wrap">' + h(s.product) + "</td><td>" + h(s.batch) + "</td><td>" + h(s.storageCondition) + "</td><td>" + h(s.timePointLabel) + "</td>" +
         "<td>" + fmt(s.plannedWithdrawal) + "</td>" +
-        "<td>" + (ep ? h(fmt(ep.requestedDate)) : "—") + "</td>" +
-        "<td>" + (ep ? epBadge(ep) : '<span class="badge tone-muted"><span class="dot"></span>No Request</span>') + "</td>" +
         "<td>" + fmt(d.earliestWithdrawal) + " → " + fmt(d.latestWithdrawal) + "</td>" +
         "<td>" + statusBadge(st.def) + "</td>" +
-        '<td style="white-space:nowrap"><button class="btn small primary" data-act="wd-open" data-id="' + s.id + '">Withdraw</button> <button class="btn small" data-act="ep-open" data-id="' + s.id + '">Early Pull</button></td></tr>';
-    }).join("") : '<tr><td colspan="10"><div class="empty"><div class="big">Nothing pending</div>All scheduled samples have been withdrawn.</div></td></tr>';
-    return '<div class="toolbar"><div class="grow"></div><button class="btn primary" data-act="ep-new">+ R&D Early Pull Request</button></div>' +
-      '<div class="card"><div class="card-h"><h3>Withdrawal / Pulling Queue</h3><span class="hint">official schedule stays unchanged; early pull is a separate request</span></div><div class="table-wrap"><table class="data"><thead><tr><th>ER</th><th>Product</th><th>Batch</th><th>Condition</th><th>Time Point</th><th>Official Withdrawal</th><th>R&amp;D Early Pull</th><th>Early Pull Status</th><th>Window</th><th>Status</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
+        '<td style="white-space:nowrap"><button class="btn small primary" data-act="wd-open" data-id="' + s.id + '">Withdraw</button></td></tr>';
+    }).join("") : '<tr><td colspan="8"><div class="empty"><div class="big">Nothing pending</div>All scheduled samples have been withdrawn.</div></td></tr>';
+    return '<div class="card"><div class="card-h"><h3>Withdrawal / Pulling Queue</h3><span class="hint">official schedule stays unchanged</span></div><div class="table-wrap"><table class="data"><thead><tr><th>ER</th><th>Product</th><th>Batch</th><th>Condition</th><th>Time Point</th><th>Official Withdrawal</th><th>Window</th><th>Status</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
   };
 
   VIEWS.documentation = function () {
@@ -870,8 +864,8 @@
       return '<div class="row"><div class="grow"><strong>' + h(a.level) + '</strong> · ' + h(a.action) + (a.comment ? ' — <span class="muted">' + h(a.comment) + "</span>" : "") + '</div><div class="muted">' + h(a.user + " · " + a.at) + "</div></div>";
     }).join("");
     var sampleRows = samples.map(function (s) {
-      var st = statusOf(s), ep = latestPull(s.sampleId);
-      return "<tr><td>" + h(s.sampleId) + "</td><td>" + h(s.timePointLabel) + "</td><td>" + fmt(s.plannedWithdrawal) + "</td><td>" + (ep ? fmt(ep.requestedDate) : "—") + "</td><td>" + (s.actualWithdrawal ? fmt(s.actualWithdrawal) : "—") + "</td><td>" + (s.arNumber ? h(s.arNumber) : "—") + "</td><td>" + statusBadge(st.def) + "</td></tr>";
+      var st = statusOf(s);
+      return "<tr><td>" + h(s.sampleId) + "</td><td>" + h(s.timePointLabel) + "</td><td>" + fmt(s.plannedWithdrawal) + "</td><td>" + (s.actualWithdrawal ? fmt(s.actualWithdrawal) : "—") + "</td><td>" + (s.arNumber ? h(s.arNumber) : "—") + "</td><td>" + statusBadge(st.def) + "</td></tr>";
     }).join("");
     var missConds = pr.loading ? missingConditions(p, pr.loading) : [];
     return '<div class="toolbar"><a class="btn" href="#/protocols">← Protocols</a><a class="btn" href="#/protocoldoc/' + id + '">Protocol document</a><div class="grow"></div>' +
@@ -890,7 +884,7 @@
       '<div class="progress"><span style="width:' + pct + '%"></span></div>' + checkHtml + "</div></div>" +
       "</div>" +
       '<h3 class="section-title">Protocol Approval</h3><div class="card"><div class="card-b list">' + (ap || '<div class="muted">No approvals recorded.</div>') + "</div></div>" +
-      '<h3 class="section-title">Time Points <span class="hint">official schedule unchanged · R&amp;D early pull shown separately</span></h3><div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Sample ID</th><th>Time Point</th><th>Official Withdrawal</th><th>R&amp;D Early Pull</th><th>Actual Withdrawal</th><th>AR No</th><th>Status</th></tr></thead><tbody>' + (sampleRows || '<tr><td colspan="5"><div class="empty">Schedule not created yet.</div></td></tr>') + "</tbody></table></div></div>";
+      '<h3 class="section-title">Time Points <span class="hint">official schedule unchanged</span></h3><div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Sample ID</th><th>Time Point</th><th>Official Withdrawal</th><th>Actual Withdrawal</th><th>AR No</th><th>Status</th></tr></thead><tbody>' + (sampleRows || '<tr><td colspan="5"><div class="empty">Schedule not created yet.</div></td></tr>') + "</tbody></table></div></div>";
   };
 
   VIEWS.datasheet = function (id) {
