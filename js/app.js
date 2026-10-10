@@ -1053,34 +1053,15 @@
   function openProtocol(id) {
     var p = protocolOf(id);
     if (!p) return;
-    var pr = projectOf(id), ps = SD.lifecycle.protocolStatus(S, id);
-    var tests = p.tests.map(function (tid) { var t = testById(tid); return "<tr><td>" + (t.section ? '<span class="pill">' + h(t.section) + "</span> " : "") + h(t.name) + "</td><td>" + h(t.unit || "—") + "</td></tr>"; }).join("");
-    var ap = (pr.approvals || []).map(function (a) {
-      return '<div class="row"><div class="grow"><strong>' + h(a.level) + "</strong> · " + h(a.action) + (a.comment ? ' — <span class="muted">' + h(a.comment) + "</span>" : "") + '</div><div class="muted">' + h(a.user + " · " + a.at) + "</div></div>";
-    }).join("");
-    var actions = "";
-    if (ps === "DRAFT" || ps === "CHANGES_REQUESTED") actions = '<button class="btn primary" data-act="proto-submit" data-id="' + id + '">Submit for review</button>';
-    else if (ps === "UNDER_REVIEW") actions = '<button class="btn primary" data-act="proto-review-approve" data-id="' + id + '">Reviewer: approve</button> <button class="btn danger" data-act="proto-changes" data-id="' + id + '">Request changes</button>';
-    else if (ps === "PENDING_GL") actions = '<button class="btn primary" data-act="proto-gl-approve" data-id="' + id + '">Group Leader: approve</button> <button class="btn danger" data-act="proto-changes" data-id="' + id + '">Request changes</button>';
+    var ps = SD.lifecycle.protocolStatus(S, id);
+    var done = ps === "UNDER_REVIEW" || ps === "PENDING_GL" || ps === "APPROVED";
+    var badge = done
+      ? '<span class="badge tone-success"><span class="dot"></span>Analyst: Done</span>'
+      : '<span class="badge tone-warn"><span class="dot"></span>Analyst: Pending</span>';
     openOverlay(drawerHead(p.protocolNo, p.product) + '<div class="drawer-b">' +
-      '<dl class="meta">' +
-      "<dt>Product Code</dt><dd>" + h(p.productCode) + "</dd>" +
-      "<dt>Batch(es)</dt><dd>" + h(p.batches.join(", ")) + "</dd>" +
-      "<dt>Storage Condition</dt><dd>" + h(p.storageCondition) + "</dd>" +
-      "<dt>Pack</dt><dd>" + h(p.pack) + "</dd>" +
-      "<dt>Time Points</dt><dd>" + h(p.timePoints.join(", ") + " months") + "</dd>" +
-      "<dt>Effective Date</dt><dd>" + fmt(p.effectiveDate) + "</dd>" +
-      "<dt>Version</dt><dd>" + h(p.version) + "</dd>" +
-      "<dt>Lifecycle Status</dt><dd>" + protoBadge(ps) + "</dd>" +
-      "</dl>" +
-      (actions ? '<div style="margin-top:14px">' + actions + "</div>" : "") +
-      '<h3 class="section-title">Approval Workflow <span class="hint">Preparer → Reviewer → Group Leader</span></h3>' +
-      '<div class="card"><div class="card-b list">' + (ap || '<div class="muted">Not submitted for review.</div>') + "</div></div>" +
-      '<h3 class="section-title">Tests <span class="hint">from the approved STP</span></h3>' +
-      '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Test</th><th>Unit</th></tr></thead><tbody>' + (tests || '<tr><td colspan="2">None</td></tr>') + "</tbody></table></div></div>" +
+      '<dl class="meta"><dt>Analyst Status</dt><dd>' + badge + "</dd></dl>" +
       "</div>");
   }
-  function testById(id) { return SD.testById(id); }
 
   function openWithdraw(id) {
     var s = store.getSample(id); if (!s) return;
