@@ -997,7 +997,10 @@
       '<div class="proto-col"><div class="eyebrow">Stability Study Required At</div><ul class="proto-list">' + condItems + "</ul>" + (m.sampleConditionOther ? '<div class="muted" style="font-size:11px">Any other: ' + h(m.sampleConditionOther) + "</div>" : "") +
       '<div class="eyebrow" style="margin-top:10px">Sample Details</div><ul class="proto-list">' + stItems + "</ul></div>" +
       "</div>" +
-      '<table><tbody>' +
+      '<table style="margin-top:10px"><tbody>' +
+      "<tr><th>Storage condition</th><td>" + conds.map(function (c, i) { return h(nthOrd(i + 1) + ": " + condText(c)); }).join("<br>") + "</td></tr>" +
+      "</tbody></table>" +
+      '<table style="margin-top:10px"><tbody>' +
       "<tr><th>Packing</th><td>" + packingHtml + "</td></tr>" +
       "</tbody></table>" +
       '<table class="sched"><thead><tr><th>Schedule</th>' + docCols.map(function (l) {
