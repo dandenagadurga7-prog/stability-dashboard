@@ -855,9 +855,15 @@
     var doneCount = steps.filter(function (s) { return s.done; }).length;
     var pct = Math.round((doneCount / steps.length) * 100);
     var ps = SD.lifecycle.protocolStatus(S, id);
-    var STEP_BACK = { packing: 1, loading: 1, withdrawal: 1, analysis: 1, documents: 1 };
+    var backable = {
+      protocol: ps === "APPROVED", packing: !!pr.packing, er: !!pr.er, loading: !!pr.loading,
+      schedule: samples.length > 0,
+      withdrawal: samples.some(function (s) { return s.actualWithdrawal; }),
+      analysis: samples.some(function (s) { return s.analysisCompleteDate; }),
+      documents: (pr.documents || []).length > 0, report: !!pr.finalReport
+    };
     var checkHtml = steps.map(function (s) {
-      var back = (s.done && STEP_BACK[s.key]) ? ' <button class="btn small" data-act="step-back" data-key="' + s.key + '" data-id="' + id + '">Back</button>' : "";
+      var back = backable[s.key] ? ' <button class="btn small" data-act="step-back" data-key="' + s.key + '" data-id="' + id + '">Back</button>' : "";
       return '<div class="check ' + (s.done ? "done" : "todo") + '"><span class="tick">' + (s.done ? "\u2713" : "\u25CB") + '</span><div><div class="c-label">' + h(s.label) + back + '</div><div class="muted">' + h(s.detail) + "</div></div></div>";
     }).join("");
     var ap = (pr.approvals || []).map(function (a) {
@@ -1420,10 +1426,17 @@
     var samples = SD.lifecycle.samplesFor(S, id);
     function wipeResults() { samples.forEach(function (s) { delete S.results[s.sampleId]; }); }
     function removeSamples() { wipeResults(); S.samples = S.samples.filter(function (s) { return s.protocolId !== id; }); }
-    if (key === "packing") {
+    if (key === "protocol") {
+      pr.approvals = [];
+      pr.packing = null; pr.er = null; pr.loading = null; removeSamples();
+      pr.documents = []; pr.finalReport = null; pr.deviations = [];
+    } else if (key === "packing") {
       pr.packing = null; pr.er = null; pr.loading = null; removeSamples();
       pr.documents = []; pr.finalReport = null;
-    } else if (key === "loading") {
+    } else if (key === "er") {
+      pr.er = null; pr.loading = null; removeSamples();
+      pr.documents = []; pr.finalReport = null;
+    } else if (key === "loading" || key === "schedule") {
       pr.loading = null; removeSamples();
       pr.documents = []; pr.finalReport = null;
     } else if (key === "withdrawal") {
@@ -1442,11 +1455,14 @@
       pr.documents = []; pr.finalReport = null;
     } else if (key === "documents") {
       pr.documents = []; pr.finalReport = null;
+    } else if (key === "report") {
+      pr.finalReport = null;
     }
     store.audit({ user: S.currentUser, action: "update", entity: "lifecycle", entityId: p.protocolNo, note: "Reverted to step: " + key });
     store.save();
-    if (key === "packing") openPack(id);
-    else if (key === "loading") openLoad(id);
+    if (key === "protocol") openProtocolForm(id);
+    else if (key === "packing") openPack(id);
+    else if (key === "loading" || key === "schedule") openLoad(id);
     else { closeOverlay(); render(); }
   }
 

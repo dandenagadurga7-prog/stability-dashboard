@@ -390,6 +390,13 @@ else {
   if (gen3.length !== 21) failures.push("add condition wrong: expected 21 samples, got " + gen3.length);
   if (SD.lifecycle.project(S, crp.id).loading.conditions.length !== 3) failures.push("loading conditions not restored to 3");
   else console.log("  added missed condition -> " + gen3.length + " samples, 3 conditions");
+  /* step Back reverts that step and everything after it */
+  global.confirm = function () { return true; };
+  click(viewClick, { "data-act": "step-back", "data-key": "loading", "data-id": crp.id });
+  if (SD.lifecycle.project(S, crp.id).loading) failures.push("step Back did not clear loading");
+  if (SD.lifecycle.samplesFor(S, crp.id).length !== 0) failures.push("step Back did not clear the schedule");
+  else console.log("  step Back cleared loading + schedule");
+  global.confirm = function () { return false; };
 }
 
 function finish() {
