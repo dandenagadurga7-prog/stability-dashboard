@@ -1446,6 +1446,14 @@
         s.reviewStatus = "not_started"; s.reportStatus = "not_started"; s.analyst = ""; s.reviewer = "";
         (S.results[s.sampleId] || []).forEach(function (r) { r.result = ""; r.status = "pending"; r.analyst = ""; r.date = ""; });
       });
+      /* reopen any early-pull request that withdrew one of these samples */
+      (S.pulls || []).forEach(function (ep) {
+        var belongs = samples.some(function (s) { return s.sampleId === ep.sampleRef; });
+        if (belongs && ep.status === "WITHDRAWN") {
+          ep.status = "APPROVED"; ep.actualDate = null;
+          ep.history.push({ at: stamp(), user: S.currentUser, action: "reverted", note: "Withdrawal reverted (step Back)" });
+        }
+      });
       pr.documents = []; pr.finalReport = null;
     } else if (key === "analysis") {
       samples.forEach(function (s) {

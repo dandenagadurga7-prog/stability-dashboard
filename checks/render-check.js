@@ -322,6 +322,14 @@ console.log("  rejected: " + ep20.id + " -> " + ep20.status);
 if (s7.plannedWithdrawal !== officialBefore) failures.push("OFFICIAL WITHDRAWAL DATE CHANGED: " + officialBefore + " -> " + s7.plannedWithdrawal);
 console.log("  official date unchanged = " + (s7.plannedWithdrawal === officialBefore) + " (" + officialBefore + ")");
 
+/* After a pull, the Withdrawal step Back clears the withdrawal and reopens the early-pull request */
+global.confirm = function () { return true; };
+click(viewClick, { "data-act": "step-back", "data-key": "withdrawal", "data-id": s7.protocolId });
+if (s7.actualWithdrawal) failures.push("withdrawal step Back did not clear the actual withdrawal");
+if (ep10.status !== "APPROVED") failures.push("withdrawal step Back did not reopen the early pull: " + ep10.status);
+else console.log("  withdrawal step Back cleared the sample and reopened the early-pull request");
+global.confirm = function () { return false; };
+
 /* Validation must reject a record with missing required fields. */
 var vErrors = SD.store.validateSample({ product: "", batch: "", plannedWithdrawal: "" });
 if (!vErrors.length) failures.push("validation accepted an empty record");
