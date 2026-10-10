@@ -746,7 +746,7 @@
       var pr = projectOf(p.id);
       var er = pr.er ? '<strong>' + h(pr.er.erNumber) + "</strong>" : '<span class="muted">Not generated</span>';
       var action = pr.er ? '<a class="btn small" href="#/project/' + p.id + '">Trace</a>' : (pr.packing ? '<button class="btn small primary" data-act="er-generate" data-id="' + p.id + '">Generate ER</button>' : '<span class="muted">Pack first</span>');
-      return "<tr><td>" + er + "</td><td>" + h(p.protocolNo) + '</td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + "</td><td>" + (pr.loading ? h(pr.loading.chamberName) : "—") + "</td><td>" + (pr.loading ? h(pr.loading.condition) : "—") + "</td><td>" + action + "</td></tr>";
+      return "<tr><td>" + er + "</td><td>" + h(p.protocolNo) + '</td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + "</td><td>" + (pr.loading ? h((pr.loading.conditions || [pr.loading]).map(function (c) { return c.chamberName; }).join(", ")) : "—") + "</td><td>" + (pr.loading ? h(protocolConditions(p)) : "—") + "</td><td>" + action + "</td></tr>";
     }).join("");
     return '<div class="notice"><strong>ER = traceability reference.</strong> The ER number links protocol → product → batch → packing → chamber → time point → withdrawal → analysis → final report. Generate it once; every later stage reuses it.</div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>ER Number</th><th>Protocol</th><th>Product</th><th>Batch</th><th>Chamber</th><th>Condition</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
@@ -763,12 +763,18 @@
   VIEWS.loading = function () {
     var rows = S.protocols.map(function (p) {
       var pr = projectOf(p.id);
-      var action = pr.loading
-        ? '<span class="pill">' + h(pr.loading.loadingId) + " · " + h(fmt(pr.loading.date)) + "</span>"
-        : (pr.er ? '<button class="btn small primary" data-act="load-open" data-id="' + p.id + '">Load into chamber</button>' : '<span class="muted">Generate ER first</span>');
-      return "<tr><td>" + (pr.er ? h(pr.er.erNumber) : "—") + '</td><td class="wrap">' + h(p.product) + "</td><td>" + (pr.loading ? h(pr.loading.chamberName) : "—") + "</td><td>" + (pr.loading ? h(pr.loading.condition) : "—") + "</td><td>" + (pr.loading ? h(pr.loading.rack + " / " + pr.loading.shelf) : "—") + "</td><td>" + action + "</td></tr>";
+      var er = pr.er ? h(pr.er.erNumber) : "—";
+      if (pr.loading) {
+        var lconds = (pr.loading.conditions && pr.loading.conditions.length) ? pr.loading.conditions : [pr.loading];
+        var pill = '<span class="pill">' + h(pr.loading.loadingId) + " · " + h(fmt(pr.loading.date)) + "</span>";
+        return lconds.map(function (c) {
+          return "<tr><td>" + er + '</td><td class="wrap">' + h(p.product) + "</td><td>" + h(c.chamberName || "—") + "</td><td>" + h(c.condition || c.chamberCondition || "—") + '</td><td class="wrap">' + h(c.rack + " / " + c.shelf) + "</td><td>" + pill + "</td></tr>";
+        }).join("");
+      }
+      var action = pr.er ? '<button class="btn small primary" data-act="load-open" data-id="' + p.id + '">Load into chamber</button>' : '<span class="muted">Generate ER first</span>';
+      return "<tr><td>" + er + '</td><td class="wrap">' + h(p.product) + '</td><td>—</td><td>—</td><td>—</td><td>' + action + "</td></tr>";
     }).join("");
-    return '<div class="notice"><strong>Loading creates the schedule.</strong> Once a sample is loaded, the system generates one time-point record per protocol time point (Initial, 1M, 2M …) with its scheduled withdrawal date.</div>' +
+    return '<div class="notice"><strong>Loading creates the schedule.</strong> Once a sample is loaded, the system generates one time-point record per protocol time point (Initial, 1M, 2M …) with its scheduled withdrawal date. Each protocol condition is loaded (and shown) separately.</div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>ER Number</th><th>Product</th><th>Chamber</th><th>Condition</th><th>Rack / Shelf</th><th>Loading</th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
   };
 

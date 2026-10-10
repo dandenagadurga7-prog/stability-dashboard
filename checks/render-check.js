@@ -372,6 +372,10 @@ else {
   var gen2 = SD.lifecycle.samplesFor(S, crp.id);
   if (gen2.length !== 21) failures.push("loading schedule wrong: expected 21 (3 conditions x 7), got " + gen2.length);
   else console.log("  loading created " + gen2.length + " samples across 3 conditions");
+  goto("#/loading", "CR Drug");
+  var crRows = (view.innerHTML.match(/CR Drug/g) || []).length;
+  if (crRows < 3) failures.push("chamber loading list shows only " + crRows + " row(s) for 3 conditions");
+  else console.log("  chamber loading list shows " + crRows + " rows (all 3 conditions)");
   /* add a missed condition back without touching what is already loaded */
   var cprj = SD.lifecycle.project(S, crp.id);
   var dropCond = cprj.loading.conditions[1].condition;
