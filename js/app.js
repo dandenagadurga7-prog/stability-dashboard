@@ -954,11 +954,12 @@
     var packingHtml = "<strong>Innermost:</strong> " + h(pk.innermost || "The material should be packed in LDPE bag purged with nitrogen, twisted and tied with tag,") +
       "<br><strong>Middle:</strong> " + h(pk.middle || "then that bag should be inserted in ALUM bag heat sealed under nitrogen purge.") +
       "<br><strong>Outermost:</strong> " + h(pk.outermost || "Finally kept in HDPE container along with silica gel.");
-    function docHeadCells() {
+    function docHeadCells(cond) {
+      cond = cond || {};
       return docCols.map(function (l) {
-        if (l.indexOf("Water content") === 0) return '<th class="num">Water content /<br>' + h((m.schedule && m.schedule.waterText) ? m.schedule.waterText : "LOD / TGA") + "</th>";
-        if (l.indexOf("Related compounds") === 0) return '<th class="num">Related compounds by<br>' + h((m.schedule && m.schedule.relatedText) ? m.schedule.relatedText : "—") + "</th>";
-        if (l === "Other test") return '<th class="num">Other test /<br>' + h((m.schedule && m.schedule.otherTest) ? m.schedule.otherTest : "") + "</th>";
+        if (l.indexOf("Water content") === 0) return '<th class="num">Water content /<br>' + h(cond.waterText || (m.schedule && m.schedule.waterText) || "LOD / TGA") + "</th>";
+        if (l.indexOf("Related compounds") === 0) return '<th class="num">Related compounds by<br>' + h(cond.relatedText || (m.schedule && m.schedule.relatedText) || "—") + "</th>";
+        if (l === "Other test") return '<th class="num">Other test /<br>' + h(cond.otherText || (m.schedule && m.schedule.otherTest) || "") + "</th>";
         return '<th class="num">' + hHead(l) + "</th>";
       }).join("");
     }
@@ -983,7 +984,7 @@
           }).join("") + "</tr>";
         }).join("");
         var head = (cond.label ? '<tr><th class="num" colspan="' + (docCols.length + 1) + '" style="text-align:center">' + h(cond.label) + "</th></tr>" : "") +
-          "<tr><th>Schedule</th>" + docHeadCells() + "</tr>";
+          "<tr><th>Schedule</th>" + docHeadCells(cond) + "</tr>";
         return '<table class="sched" style="margin-top:12px"><thead>' + head + "</thead><tbody>" + rows + "</tbody></table>";
       }).join("");
     } else {
@@ -1512,11 +1513,9 @@
     var tables = condLabels.map(function (cond, ci) {
       var headCells = SCHED_ROWS.map(function (n) {
         var extra = "";
-        if (ci === 0) {
-          if (n.indexOf("Water content") === 0) extra = '<br><input class="input" id="npWaterText" placeholder="type LOD / TGA" style="width:112px;margin-top:4px" />';
-          if (n.indexOf("Related compounds") === 0) extra = '<br><input class="input" id="npRelatedText" placeholder="type HPLC / GC" style="width:112px;margin-top:4px" />';
-          if (n === "Other test") extra = ' /<br><input class="input" id="npOtherTest" placeholder="type purpose" style="width:112px;margin-top:4px" />';
-        }
+        if (n.indexOf("Water content") === 0) extra = '<br><input class="input" id="npWaterText_' + ci + '" placeholder="type LOD / TGA" style="width:112px;margin-top:4px" />';
+        if (n.indexOf("Related compounds") === 0) extra = '<br><input class="input" id="npRelatedText_' + ci + '" placeholder="type HPLC / GC" style="width:112px;margin-top:4px" />';
+        if (n === "Other test") extra = ' /<br><input class="input" id="npOtherTest_' + ci + '" placeholder="type purpose" style="width:112px;margin-top:4px" />';
         return '<th class="num">' + hHead(n) + extra + "</th>";
       }).join("");
       var head = (cond ? '<tr><th class="num" colspan="' + (SCHED_ROWS.length + 1) + '" style="text-align:center">' + h(cond) + "</th></tr>" : "") +
@@ -1547,8 +1546,14 @@
       waterText: waterEl ? String(waterEl.value).trim() : "",
       relatedText: relEl ? String(relEl.value).trim() : "",
       conditions: condLabels.map(function (cond, ci) {
+        var wt = document.getElementById("npWaterText_" + ci);
+        var rt = document.getElementById("npRelatedText_" + ci);
+        var ot = document.getElementById("npOtherTest_" + ci);
         return {
           label: cond,
+          waterText: wt ? String(wt.value).trim() : "",
+          relatedText: rt ? String(rt.value).trim() : "",
+          otherText: ot ? String(ot.value).trim() : "",
           rows: SCHED_COLS.map(function (tp, ri) {
             return { label: tp, marks: SCHED_ROWS.map(function (n, ti) { var el = document.getElementById("npSc_" + ci + "_" + ri + "_" + ti); return (el && el.value) ? el.value : "X"; }) };
           })
