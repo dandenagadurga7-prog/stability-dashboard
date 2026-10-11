@@ -371,6 +371,9 @@ else {
     var crStp = S.stps.filter(function (x) { return x.id === crp.id; })[0];
     if (crStp.stpNumber !== "ITB-STP/001") failures.push("STP number not taken from the protocol STP No.: " + crStp.stpNumber);
     else console.log("  STP auto-built for new protocol -> STP No. " + crStp.stpNumber);
+    var crAssay = crStp.tests.filter(function (x) { return x.testId === "assay"; })[0];
+    if (crAssay && crAssay.theory.indexOf("Standard preparation") < 0) failures.push("assay theory does not carry the STP method/preparation text");
+    else if (crAssay) console.log("  assay theory carries the STP method/preparation text");
   }
   click(viewClick, { "data-act": "proto-submit", "data-id": crp.id });
   click(viewClick, { "data-act": "proto-changes", "data-id": crp.id });

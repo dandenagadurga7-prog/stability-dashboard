@@ -1936,7 +1936,7 @@
   var wsState = { protocolId: null, selected: [], results: {}, raw: {} };
 
   function openWorksheet(preselectId) {
-    var opts = S.protocols.map(function (p) { return '<option value="' + h(p.id) + '"' + (preselectId === p.id ? " selected" : "") + ">" + h(p.protocolNo + " — " + p.product) + "</option>"; }).join("");
+    var opts = S.protocols.map(function (p) { var sn = (stpFor(p.id) || {}).stpNumber || stpNoOf(p); return '<option value="' + h(p.id) + '"' + (preselectId === p.id ? " selected" : "") + ">" + h(sn + " — " + p.product + " (V " + p.version + ")") + "</option>"; }).join("");
     openOverlay(drawerHead("New Analysis Worksheet", "select STP → select tests → enter weights") + '<div class="drawer-b">' +
       '<label class="fld">STP Number (read-only source)</label><select class="select" id="wsStp">' + opts + "</select>" +
       '<label class="fld" style="margin-top:10px">Time point (which sample this sheet is for)</label><select class="select" id="wsTimePoint"></select>' +
@@ -1952,7 +1952,8 @@
     var sel = document.getElementById("wsStp");
     var pid = sel ? sel.value : (S.protocols[0] || {}).id;
     var p = protocolOf(pid); if (!p) return;
-    var html = p.tests.map(function (tid) {
+    var sn = (stpFor(p.id) || {}).stpNumber || stpNoOf(p);
+    var html = '<div class="muted" style="margin:2px 0 8px">' + p.tests.length + " test(s) available from STP " + h(sn) + " — tick the ones to analyse. The related method / theory loads from the STP when you open a test.</div>" + p.tests.map(function (tid) {
       var t = SD.testById(tid);
       return '<label class="check" style="cursor:pointer"><input type="checkbox" data-ws-test="' + h(tid) + '" checked /> <div><div class="c-label">' + h(t.name) + '</div><div class="muted">' + h(t.specification) + "</div></div></label>";
     }).join("");

@@ -51,6 +51,17 @@
     { id: "anz_residual", section: "10.0", name: "Residual solvents by GC", method: "Gas Chromatography (HS-GC)", specification: "Method-I: Methanol NMT 3000 ppm; Isopropyl alcohol NMT 5000 ppm; Methylene chloride NMT 600 ppm; Tertiary butyl methyl ether NMT 5000 ppm; n-Hexane NMT 290 ppm; Diisopropyl ether NMT 100 ppm; Ethyl acetate NMT 5000 ppm; Toluene NMT 890 ppm. Method-II: Chloroform NMT 60 ppm; Dimethyl formamide NMT 880 ppm.", unit: "ppm", theory: "Residual solvents determined by gas chromatography, Method-I and Method-II (In-House)." }
   ];
 
+  /* Method / preparation text shown in the worksheet theory box for the generic tests.
+   * Weights the analyst must fill in are shown as [—] so the sheet reads like the STP. */
+  var THEORY_METHOD = {
+    appearance: "Examine the sample visually against a white background. Report the appearance; it must match the specification.",
+    identification: "Standard preparation: Weigh about [—] mg of the reference standard into a [—] mL volumetric flask, dissolve and dilute to volume. Sample preparation: weigh about [—] mg of the sample and treat as per the standard. Inject into HPLC; the retention time of the major peak in the test solution must correspond to that of the standard.",
+    assay: "Standard preparation: Weigh accurately about [—] mg of the working standard into a [—] mL volumetric flask, add about 70 mL of diluent, sonicate to dissolve and dilute to volume. Sample preparation: Weigh accurately about [—] mg of sample into a [—] mL volumetric flask and treat as per the standard. Inject the standard and the sample into the HPLC; measure the peak responses. Assay % = (Sample area / Standard area) × (Standard weight / Sample weight) × 100.",
+    related: "Standard preparation: Dilute the impurity / standard stock solution to obtain the specified concentration. Sample preparation: Weigh about [—] mg of sample into a [—] mL volumetric flask, dissolve and dilute to volume. Inject into the HPLC; record the individual and total impurity peak responses.",
+    dissolution: "Medium: [—] mL. Apparatus: USP Apparatus II (paddle) at [—] rpm, 37 ± 0.5 °C. Place one unit in each vessel; at 30 minutes withdraw a portion, filter and measure the dissolved amount; calculate % of label claim.",
+    water: "For example, weigh about [—] mg of sample. Titrate with the Karl Fischer reagent to the end point and express the water content as % w/w."
+  };
+
   var PROTOCOLS = [
     /* REAL — taken verbatim from the supplied Stability Report (photo, 2026-10-03). */
     {
@@ -356,7 +367,7 @@
         { level: "Preparer", user: "A. Dhamodar", role: "Protocol Preparer", action: "submitted", at: off(-a) + " 09:10:00", comment: "Prepared and submitted" },
         { level: "Reviewer", user: "Dr. V. Sharma", role: "Reviewer", action: "approved", at: off(-b) + " 11:30:00", comment: "Reviewed; no observations" },
         { level: "Group Leader", user: "Dr. L. Menon", role: "Group Leader", action: "approved", at: off(-c) + " 15:45:00", comment: "Approved" }
-      ];
+  ];
     }
     var NOW = SD.dates.todayISO();
     var projects = {};
@@ -407,7 +418,7 @@
           var statementLike = /spectrum|pattern|retention time|match|concordant|diffractogram/i.test(t.specification);
           var rec = {
             testId: tid,
-            theory: t.theory || (statementLike ? t.specification : "Method / theory to be supplied from the approved STP (" + p.protocolNo + ")."),
+            theory: THEORY_METHOD[tid] || t.theory || (statementLike ? t.specification : "Method / theory to be supplied from the approved STP (" + p.protocolNo + ")."),
             variables: [], formula: null
           };
           if (/assay/i.test(tid)) {
