@@ -1987,7 +1987,6 @@
     var opts = S.protocols.map(function (p) { var sn = (stpFor(p.id) || {}).stpNumber || stpNoOf(p); return '<option value="' + h(p.id) + '"' + (preselectId === p.id ? " selected" : "") + ">" + h(sn + " — " + p.product + " (V " + p.version + ")") + "</option>"; }).join("");
     openOverlay(drawerHead("New Analysis Worksheet", "select STP → select tests → enter weights") + '<div class="drawer-b">' +
       '<label class="fld">STP Number (read-only source)</label><select class="select" id="wsStp">' + opts + "</select>" +
-      '<label class="fld" style="margin-top:10px">Time point (which sample this sheet is for)</label><select class="select" id="wsTimePoint"></select>' +
       '<div style="margin-top:12px"><div class="eyebrow">Tests (from the protocol — tick the ones to analyse)</div><div id="wsTests" class="ws-tests"></div></div>' +
       '<label class="fld" style="margin-top:10px">Attach instrument Excel (optional)</label><input class="input" type="file" id="wsExcel" accept=".xlsx,.xls,.csv" />' +
       '<div style="margin-top:14px"><button class="btn primary" data-act="ws-load">Load theory &amp; data entry</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
@@ -2006,10 +2005,13 @@
       return '<label class="check" style="cursor:pointer"><input type="checkbox" data-ws-test="' + h(tid) + '" checked /> <div><div class="c-label">' + h(t.name) + '</div><div class="muted">' + h(t.specification) + "</div></div></label>";
     }).join("");
     document.getElementById("wsTests").innerHTML = html;
-    var samples = SD.lifecycle.samplesFor(S, pid).sort(function (a, b) { return a.timePointMonths - b.timePointMonths; });
-    document.getElementById("wsTimePoint").innerHTML = samples.map(function (s) {
-      return '<option value="' + h(s.id) + '">' + h(s.timePointLabel + " — " + s.sampleId + " · planned " + fmt(s.plannedWithdrawal)) + "</option>";
-    }).join("");
+    var tpEl = document.getElementById("wsTimePoint");
+    if (tpEl) {
+      var samples = SD.lifecycle.samplesFor(S, pid).sort(function (a, b) { return a.timePointMonths - b.timePointMonths; });
+      tpEl.innerHTML = samples.map(function (s) {
+        return '<option value="' + h(s.id) + '">' + h(s.timePointLabel + " — " + s.sampleId + " · planned " + fmt(s.plannedWithdrawal)) + "</option>";
+      }).join("");
+    }
   }
   function sampleByRef(ref) {
     var s = store.getSample(ref);
@@ -2054,7 +2056,8 @@
       return html + "</div>";
     }).join("");
     document.getElementById("wsSheet").innerHTML = '<div class="worksheet" id="wsPrintable">' + head + body +
-      '<div class="ws-actions" style="margin-top:16px"><button class="btn primary" data-act="ws-calc">Calculate &amp; check specification</button> <button class="btn primary" data-act="ws-save">Save to time point</button> <button class="btn" data-act="ws-print">Print / PDF worksheet</button></div></div>';
+      '<div class="ws-actions" style="margin-top:16px"><button class="btn primary" data-act="ws-calc">Calculate &amp; check specification</button>' + (wsState.sampleId ? ' <button class="btn primary" data-act="ws-save">Save to time point</button>' : "") + ' <button class="btn" data-act="ws-print">Print / PDF worksheet</button></div>' +
+      (wsState.sampleId ? "" : '<p class="muted" style="margin-top:10px">To save results to a time point, open that sample under <strong>Analysis</strong> → Test results.</p>') + "</div>";
   }
 
   function wsCalc() {
