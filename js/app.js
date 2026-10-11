@@ -37,13 +37,16 @@
     return null;
   }
   function stpNoOf(p) { return (p && p.protocolMeta && p.protocolMeta.stpNo) || (p && p.protocolNo) || "—"; }
-  /* Every protocol must have an STP so the worksheet loads method/theory automatically. */
+  /* Rebuild each protocol's STP so the method/theory text is always current. */
   function ensureStps() {
     if (typeof SD.buildStp !== "function") return;
     S.stps = S.stps || [];
-    var have = {};
-    S.stps.forEach(function (x) { if (x && x.id) have[x.id] = true; });
-    (S.protocols || []).forEach(function (p) { if (!have[p.id]) { S.stps.push(SD.buildStp(p)); have[p.id] = true; } });
+    (S.protocols || []).forEach(function (p) {
+      var built = SD.buildStp(p);
+      var idx = -1;
+      S.stps.forEach(function (x, i) { if (x && x.id === p.id) idx = i; });
+      if (idx >= 0) S.stps[idx] = built; else S.stps.push(built);
+    });
   }
   /* Re-derive protocol tests from the saved schedule so older protocols match the plan (and the STP). */
   function ensureSchedTests() {
@@ -2034,7 +2037,7 @@
     var p = protocolOf(wsState.protocolId), stp = stpFor(wsState.protocolId);
     if (!p) return;
     var sp = sampleByRef(wsState.sampleId);
-    var head = '<div class="ws-head"><div><strong>' + h(stp ? stp.stpNumber : p.protocolNo) + " · Rev " + h(p.version) + '</strong><div class="muted">' + h(p.product) + " · " + h(p.batches.join(", ")) + " · " + h(p.storageCondition) + (sp ? " · Time point " + h(sp.timePointLabel) : "") + "</div></div></div>";
+    var head = '<div class="ws-head"><div><strong>STP No. ' + h(stp ? stp.stpNumber : stpNoOf(p)) + " · Rev " + h(p.version) + '</strong><div class="muted">' + h(p.product) + " · " + h(p.batches.join(", ")) + " · " + h(p.storageCondition) + (sp ? " · Time point " + h(sp.timePointLabel) : "") + "</div></div></div>";
     var body = wsState.selected.map(function (tid) {
       var t = SD.testById(tid);
       var rec = ((stp && stp.tests) || []).filter(function (x) { return x.testId === tid; })[0] || {};
