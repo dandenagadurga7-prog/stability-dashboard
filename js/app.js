@@ -6,7 +6,7 @@
   var S = store.load(SD.seed);
   SD.lifecycle.ensure(S);
   ensureStps();
-  store.save();
+  store.save(true);
 
   var filters = { search: "", product: "", batch: "", status: "", storage: "", analyst: "", timePoint: "" };
   var protoFilter = "";
@@ -2608,7 +2608,13 @@
   if (SD.db && SD.db.enabled()) {
     setBackend("Connecting to Supabase…", false);
     SD.db.pull().then(function (remote) {
-      if (remote && remote.samples) { store.state = remote; S = remote; SD.lifecycle.ensure(S); ensureStps(); store.save(); render(); }
+      var canUseRemote = remote && remote.samples;
+      var localStamp = S.savedAt || 0, remoteStamp = (remote && remote.savedAt) || 0;
+      /* Adopt the cloud copy only if this browser has no local data, or the cloud copy is strictly newer.
+         If this browser already had data, the local copy wins ties so a newer local copy is never clobbered. */
+      if (canUseRemote && (!store.hadLocal || remoteStamp > localStamp)) {
+        store.state = remote; S = remote; SD.lifecycle.ensure(S); ensureStps(); store.save(true); render();
+      }
       return SD.db.push(S);
     }).then(function () {
       dbConnected = true;

@@ -127,19 +127,23 @@
 
   var store = {
     state: null,
+    hadLocal: false,
     load: function (seedFn) {
       var raw = null;
       try { raw = global.localStorage.getItem(STORE_KEY); } catch (e) { raw = null; }
       if (raw) {
         try { this.state = JSON.parse(raw); } catch (e) { this.state = null; }
       }
+      this.hadLocal = !!(raw && this.state && this.state.samples);
       if (!this.state || !this.state.samples) {
         this.state = seedFn();
-        this.save();
+        this.save(true);
       }
       return this.state;
     },
-    save: function () {
+    /* keepStamp=true keeps the state's own savedAt (used when adopting/loading, not on user edits) */
+    save: function (keepStamp) {
+      if (!keepStamp) { this.state.savedAt = Date.now(); }
       try { global.localStorage.setItem(STORE_KEY, JSON.stringify(this.state)); } catch (e) { /* private mode */ }
     },
     reset: function (seedFn) { this.state = seedFn(); this.save(); },
