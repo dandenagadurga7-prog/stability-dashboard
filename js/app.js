@@ -2660,9 +2660,16 @@
     SD.db.pull().then(function (remote) {
       var canUseRemote = remote && remote.samples;
       var localStamp = S.savedAt || 0, remoteStamp = (remote && remote.savedAt) || 0;
-      /* Adopt the cloud copy only if this browser has no local data, or the cloud copy is strictly newer.
-         If this browser already had data, the local copy wins ties so a newer local copy is never clobbered. */
-      if (canUseRemote && (!store.hadLocal || remoteStamp > localStamp)) {
+      var useRemote = false;
+      if (canUseRemote) {
+        if (!store.hadLocal) useRemote = true;
+        else if (remoteStamp > localStamp) useRemote = true;
+        else if (remoteStamp === localStamp) {
+          /* legacy copies have no timestamp: keep the richer one so a fuller browser wins and syncs everywhere */
+          useRemote = (remote.samples || []).length > (S.samples || []).length;
+        }
+      }
+      if (useRemote) {
         store.state = remote; S = remote; SD.lifecycle.ensure(S); ensureStps(); ensureSchedTests(); store.save(true); render();
       }
       return SD.db.push(S);
