@@ -6,6 +6,7 @@
   var S = store.load(SD.seed);
   SD.lifecycle.ensure(S);
   ensureStps();
+  ensureSchedTests();
   store.save(true);
 
   var filters = { search: "", product: "", batch: "", status: "", storage: "", analyst: "", timePoint: "" };
@@ -44,6 +45,22 @@
     var have = {};
     S.stps.forEach(function (x) { if (x && x.id) have[x.id] = true; });
     (S.protocols || []).forEach(function (p) { if (!have[p.id]) { S.stps.push(SD.buildStp(p)); have[p.id] = true; } });
+  }
+  /* Re-derive protocol tests from the saved schedule so older protocols match the plan (and the STP). */
+  function ensureSchedTests() {
+    (S.protocols || []).forEach(function (p) {
+      var derived = deriveTestsFromSchedule(p.protocolMeta);
+      if (!derived || !derived.length) return;
+      if (derived.join(",") === (p.tests || []).join(",")) return;
+      p.tests = derived;
+      if (typeof SD.buildStp === "function") {
+        S.stps = S.stps || [];
+        var idx = -1;
+        S.stps.forEach(function (x, i) { if (x.id === p.id) idx = i; });
+        var built = SD.buildStp(p);
+        if (idx >= 0) S.stps[idx] = built; else S.stps.push(built);
+      }
+    });
   }
 
   /* ---------- R&D early pull (add-on; official date never changed) ---------- */
@@ -1564,6 +1581,19 @@
   function hHead(label) { return String(label).split("|").map(h).join("<br>"); }
 
   /* derive the protocol tests from the Schedule (rows marked tick) */
+  function testIdForRow(name) {
+    var re = null;
+    if (/description/i.test(name)) re = /description/i;
+    else if (/infrared|^ir/i.test(name)) re = /identification|infrared|\bIR\b/i;
+    else if (/water|lod|tga/i.test(name)) re = /water|lod|loss on drying/i;
+    else if (/xrd/i.test(name)) re = /xrd/i;
+    else if (/related|impurity/i.test(name)) re = /related|impurity/i;
+    else if (/assay/i.test(name)) re = /assay/i;
+    if (!re) return null;
+    var found = (S.testLibrary || []).filter(function (t) { return re.test(t.name) && !/^(tfd_|anz_)/.test(t.id); })[0];
+    return found ? found.id : null;
+  }
+
   function mapSchedTests() {
     var out = [];
     var condCount = npCondLabels().length || 1;
@@ -1576,16 +1606,23 @@
         }
       }
       if (!any) return;
-      var re = null;
-      if (/description/i.test(name)) re = /description/i;
-      else if (/infrared|^ir/i.test(name)) re = /identification|infrared|\bIR\b/i;
-      else if (/water|lod|tga/i.test(name)) re = /water|lod|loss on drying/i;
-      else if (/xrd/i.test(name)) re = /xrd/i;
-      else if (/related|impurity/i.test(name)) re = /related|impurity/i;
-      else if (/assay/i.test(name)) re = /assay/i;
-      if (!re) return;
-      var found = (S.testLibrary || []).filter(function (t) { return re.test(t.name) && !/^(tfd_|anz_)/.test(t.id); })[0];
-      if (found && out.indexOf(found.id) < 0) out.push(found.id);
+      var tid = testIdForRow(name);
+      if (tid && out.indexOf(tid) < 0) out.push(tid);
+    });
+    return out;
+  }
+
+  /* derive the protocol tests from the SAVED schedule (used to migrate older protocols) */
+  function deriveTestsFromSchedule(m) {
+    if (!m || !m.schedule || !m.schedule.conditions || !m.schedule.conditions.length) return null;
+    var out = [];
+    SCHED_ROWS.forEach(function (name, ti) {
+      var any = m.schedule.conditions.some(function (cond) {
+        return (cond.rows || []).some(function (r) { var mk = (r.marks || [])[ti]; return mk === true || mk === "\u2713"; });
+      });
+      if (!any) return;
+      var tid = testIdForRow(name);
+      if (tid && out.indexOf(tid) < 0) out.push(tid);
     });
     return out;
   }
@@ -2621,7 +2658,7 @@
       /* Adopt the cloud copy only if this browser has no local data, or the cloud copy is strictly newer.
          If this browser already had data, the local copy wins ties so a newer local copy is never clobbered. */
       if (canUseRemote && (!store.hadLocal || remoteStamp > localStamp)) {
-        store.state = remote; S = remote; SD.lifecycle.ensure(S); ensureStps(); store.save(true); render();
+        store.state = remote; S = remote; SD.lifecycle.ensure(S); ensureStps(); ensureSchedTests(); store.save(true); render();
       }
       return SD.db.push(S);
     }).then(function () {
