@@ -1566,18 +1566,25 @@
   /* derive the protocol tests from the Schedule (rows marked tick) */
   function mapSchedTests() {
     var out = [];
-    SCHED_ROWS.forEach(function (name, ci) {
-      var any = SCHED_COLS.some(function (tp, ri) { var el = document.getElementById("npSc_" + ri + "_" + ci); return el && el.value === "\u2713"; });
+    var condCount = npCondLabels().length || 1;
+    SCHED_ROWS.forEach(function (name, ti) {
+      var any = false;
+      for (var ci = 0; ci < condCount && !any; ci++) {
+        for (var ri = 0; ri < SCHED_COLS.length; ri++) {
+          var el = document.getElementById("npSc_" + ci + "_" + ri + "_" + ti);
+          if (el && el.value === "\u2713") { any = true; break; }
+        }
+      }
       if (!any) return;
       var re = null;
       if (/description/i.test(name)) re = /description/i;
-      else if (/infrared|^ir/i.test(name)) re = /infrared|\bIR\b/i;
+      else if (/infrared|^ir/i.test(name)) re = /identification|infrared|\bIR\b/i;
       else if (/water|lod|tga/i.test(name)) re = /water|lod|loss on drying/i;
       else if (/xrd/i.test(name)) re = /xrd/i;
       else if (/related|impurity/i.test(name)) re = /related|impurity/i;
       else if (/assay/i.test(name)) re = /assay/i;
       if (!re) return;
-      var found = (S.testLibrary || []).filter(function (t) { return re.test(t.name); })[0];
+      var found = (S.testLibrary || []).filter(function (t) { return re.test(t.name) && !/^(tfd_|anz_)/.test(t.id); })[0];
       if (found && out.indexOf(found.id) < 0) out.push(found.id);
     });
     return out;

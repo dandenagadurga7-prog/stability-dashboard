@@ -361,6 +361,8 @@ document.getElementById("npStpNo").value = "ITB-STP/001";
 document.getElementById("npCondA").checked = true;
 document.getElementById("npCondB").checked = true;
 document.getElementById("npCondC").checked = true;
+["npSc_0_0_0", "npSc_0_0_1", "npSc_0_0_2", "npSc_0_0_3", "npSc_0_0_4", "npSc_0_0_5"].forEach(function (id) { document.getElementById(id).value = "\u2713"; });
+["npSc_0_0_6", "npSc_0_0_7"].forEach(function (id) { document.getElementById(id).value = "X"; });
 click(overlayClick, { "data-act": "np-save" });
 var crp = S.protocols[S.protocols.length - 1];
 if (!crp || crp.product !== "CR Drug") failures.push("CR protocol not created");
@@ -374,6 +376,9 @@ else {
     var crAssay = crStp.tests.filter(function (x) { return x.testId === "assay"; })[0];
     if (crAssay && crAssay.theory.indexOf("Standard preparation") < 0) failures.push("assay theory does not carry the STP method/preparation text");
     else if (crAssay) console.log("  assay theory carries the STP method/preparation text");
+    if (crp.tests.indexOf("dissolution") >= 0) failures.push("schedule ticks were not used to auto-pick tests (dissolution present)");
+    if (crp.tests.indexOf("water") < 0 || crp.tests.indexOf("related") < 0 || crp.tests.indexOf("assay") < 0) failures.push("schedule ticks did not auto-pick water/related/assay: " + crp.tests.join(","));
+    else console.log("  protocol tests auto-picked from schedule ticks: " + crp.tests.join(", "));
   }
   click(viewClick, { "data-act": "proto-submit", "data-id": crp.id });
   click(viewClick, { "data-act": "proto-changes", "data-id": crp.id });
