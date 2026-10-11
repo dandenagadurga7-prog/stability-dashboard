@@ -6,7 +6,6 @@
   var S = store.load(SD.seed);
   SD.lifecycle.ensure(S);
   ensureStps();
-  ensureSchedTests();
   store.save(true);
 
   var filters = { search: "", product: "", batch: "", status: "", storage: "", analyst: "", timePoint: "" };
@@ -48,6 +47,7 @@
   }
   /* Re-derive protocol tests from the saved schedule so older protocols match the plan (and the STP). */
   function ensureSchedTests() {
+    if (typeof SCHED_ROWS === "undefined" || !SCHED_ROWS || !SCHED_ROWS.length) return;
     (S.protocols || []).forEach(function (p) {
       var derived = deriveTestsFromSchedule(p.protocolMeta);
       if (!derived || !derived.length) return;
@@ -2634,6 +2634,7 @@
   }
 
   /* ---------- boot ---------- */
+  try { ensureSchedTests(); } catch (e) { if (typeof console !== "undefined") console.error("schedule-test migration failed:", e); }
   renderNav();
   document.getElementById("roleSelect").value = S.role;
   document.getElementById("roleSelect").addEventListener("change", function (e) { S.role = e.target.value; render(); });
