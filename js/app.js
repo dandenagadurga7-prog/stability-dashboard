@@ -1581,17 +1581,21 @@
   function hHead(label) { return String(label).split("|").map(h).join("<br>"); }
 
   /* derive the protocol tests from the Schedule (rows marked tick) */
-  function testIdForRow(name) {
+  function rowCleanName(name) { return String(name).split("|").map(function (x) { return x.trim(); }).join(" ").replace(/\s+/g, " ").trim(); }
+  /* Map a schedule row to a test. Rows without a library test get their own test so NOTHING in the protocol is dropped. */
+  function ensureTestForRow(name) {
     var re = null;
     if (/description/i.test(name)) re = /description/i;
     else if (/infrared|^ir/i.test(name)) re = /identification|infrared|\bIR\b/i;
     else if (/water|lod|tga/i.test(name)) re = /water|lod|loss on drying/i;
-    else if (/xrd/i.test(name)) re = /xrd/i;
     else if (/related|impurity/i.test(name)) re = /related|impurity/i;
     else if (/assay/i.test(name)) re = /assay/i;
-    if (!re) return null;
-    var found = (S.testLibrary || []).filter(function (t) { return re.test(t.name) && !/^(tfd_|anz_)/.test(t.id); })[0];
-    return found ? found.id : null;
+    var t = re ? (S.testLibrary || []).filter(function (x) { return re.test(x.name) && !/^(tfd_|anz_)/.test(x.id); })[0] : null;
+    if (t) return t.id;
+    var label = rowCleanName(name) || "Test";
+    var id = "sched_" + label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+    if (!SD.testById(id)) S.testLibrary.push({ id: id, name: label, method: "As per STP", specification: "As per protocol / STP", unit: "" });
+    return id;
   }
 
   function mapSchedTests() {
@@ -1606,7 +1610,7 @@
         }
       }
       if (!any) return;
-      var tid = testIdForRow(name);
+      var tid = ensureTestForRow(name);
       if (tid && out.indexOf(tid) < 0) out.push(tid);
     });
     return out;
@@ -1621,7 +1625,7 @@
         return (cond.rows || []).some(function (r) { var mk = (r.marks || [])[ti]; return mk === true || mk === "\u2713"; });
       });
       if (!any) return;
-      var tid = testIdForRow(name);
+      var tid = ensureTestForRow(name);
       if (tid && out.indexOf(tid) < 0) out.push(tid);
     });
     return out;
