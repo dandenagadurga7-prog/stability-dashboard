@@ -34,17 +34,22 @@
   function stpFor(id) {
     var list = S.stps || [];
     for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    /* an uploaded STP may be linked to a protocol by its STP No. */
+    var p = protocolOf(id);
+    if (p) { var sn = stpNoOf(p); for (var j = 0; j < list.length; j++) if (list[j].stpNumber === sn) return list[j]; }
     return null;
   }
   function stpNoOf(p) { return (p && p.protocolMeta && p.protocolMeta.stpNo) || (p && p.protocolNo) || "—"; }
-  /* Rebuild each protocol's STP so the method/theory text is always current. */
+  /* Rebuild each protocol's auto STP so the method/theory text is always current.
+     A user-uploaded (auto:false) STP is never overwritten. */
   function ensureStps() {
     if (typeof SD.buildStp !== "function") return;
     S.stps = S.stps || [];
     (S.protocols || []).forEach(function (p) {
-      var built = SD.buildStp(p);
       var idx = -1;
       S.stps.forEach(function (x, i) { if (x && x.id === p.id) idx = i; });
+      if (idx >= 0 && S.stps[idx] && S.stps[idx].auto === false) return;
+      var built = SD.buildStp(p);
       if (idx >= 0) S.stps[idx] = built; else S.stps.push(built);
     });
   }
@@ -848,16 +853,134 @@
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Protocol</th><th>Product</th><th>ER</th><th>Analyses</th><th>Final Report</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
   };
 
+  var STP_UPLOAD_ROLES = ["Manager", "Group Leader", "Admin", "Protocol Preparer"];
+  var STP_APPROVE_ROLES = ["Manager", "Group Leader", "Admin"];
+  function stpStatusTone(st) { return st === "Approved" ? "success" : (st === "Rejected" ? "danger" : (st === "Verified" ? "info" : "warn")); }
+  function stpStatusBadge(st) { return '<span class="badge tone-' + stpStatusTone(st) + '"><span class="dot"></span>' + h(st || "Draft") + "</span>"; }
+  function stpSourceText(sp) { return (sp && sp.sourceFile) ? sp.sourceFile.name : (sp && sp.auto ? "Auto (from protocol)" : "—"); }
+
   VIEWS.stp = function () {
-    var rows = S.protocols.map(function (p) {
+    function rowFor(p) {
       var sp = stpFor(p.id);
-      var stpNo = (sp && sp.stpNumber) || (p.protocolMeta && p.protocolMeta.stpNo) || p.protocolNo;
-      return '<tr><td><strong>' + h(stpNo) + "</strong></td><td>" + h(p.version) + "</td><td>" + h(fmt(p.effectiveDate)) + '</td><td class="wrap">' + h(p.product) + '</td><td class="num">' + p.tests.length + '</td><td><span class="badge tone-success"><span class="dot"></span>Approved</span></td><td><button class="btn small" data-act="protocol-open" data-id="' + p.id + '">View methods</button> <button class="btn small primary" data-act="ws-new-stp" data-id="' + p.id + '">Worksheet</button></td></tr>';
+      var stpNo = (sp && sp.stpNumber) || stpNoOf(p);
+      var status = sp ? (sp.status || "Draft") : "Draft";
+      var acts = '<button class="btn small" data-act="protocol-open" data-id="' + p.id + '">Methods</button>';
+      if (status === "Approved") acts += ' <button class="btn small primary" data-act="ws-new-stp" data-id="' + p.id + '">Worksheet</button>';
+      else acts += ' <button class="btn small" data-act="stp-verify" data-id="' + p.id + '">Verify text</button>';
+      if (status !== "Approved" && STP_APPROVE_ROLES.indexOf(S.role) >= 0) acts += ' <button class="btn small primary" data-act="stp-approve" data-id="' + p.id + '">Approve</button> <button class="btn small danger" data-act="stp-reject" data-id="' + p.id + '">Reject</button>';
+      return "<tr><td><strong>" + h(stpNo) + "</strong></td><td>" + h(sp ? sp.version : p.version) + "</td><td>" + h(fmt(sp ? sp.effectiveDate : p.effectiveDate)) + '</td><td class="wrap">' + h(p.product) + '</td><td class="num">' + (sp ? (sp.tests || []).length : p.tests.length) + "</td><td>" + stpStatusBadge(status) + '</td><td class="wrap">' + h(stpSourceText(sp)) + "</td><td>" + acts + "</td></tr>";
+    }
+    var rows = S.protocols.map(rowFor).join("");
+    var extra = (S.stps || []).filter(function (sp) {
+      return sp && !S.protocols.some(function (p) { return p.id === sp.id || stpNoOf(p) === sp.stpNumber; });
+    }).map(function (sp) {
+      var acts = '<button class="btn small" data-act="stp-verify" data-id="' + h(sp.id) + '">Verify text</button>';
+      if (sp.status !== "Approved" && STP_APPROVE_ROLES.indexOf(S.role) >= 0) acts += ' <button class="btn small primary" data-act="stp-approve" data-id="' + h(sp.id) + '">Approve</button>';
+      return "<tr><td><strong>" + h(sp.stpNumber) + "</strong></td><td>" + h(sp.version) + "</td><td>" + h(fmt(sp.effectiveDate)) + '</td><td class="wrap">' + h(sp.product || "—") + '</td><td class="num">' + ((sp.tests || []).length) + "</td><td>" + stpStatusBadge(sp.status) + '</td><td class="wrap">' + h(stpSourceText(sp)) + "</td><td>" + acts + "</td></tr>";
     }).join("");
-    return '<div class="toolbar"><div class="grow"></div><button class="btn primary" data-act="ws-new">+ New analysis worksheet (STP)</button></div>' +
-      '<div class="notice"><strong>Read-only source control.</strong> In analysis the applicable STP loads automatically; the analyst cannot edit method text, only enter actual lab data. Historical records keep the exact STP version used.</div>' +
-      '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>STP No.</th><th>Version</th><th>Effective</th><th>Product</th><th>Tests</th><th>Status</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
+    var canUp = STP_UPLOAD_ROLES.indexOf(S.role) >= 0;
+    return '<div class="toolbar"><div class="grow"><span class="pill">Signed-in role: ' + h(S.role) + "</span></div>" +
+      (canUp ? '<button class="btn primary" data-act="stp-upload">+ Upload STP (PDF / DOCX)</button> ' : "") +
+      '<button class="btn primary" data-act="ws-new">+ New analysis worksheet (STP)</button></div>' +
+      '<div class="notice"><strong>Controlled source.</strong> Analyses use only an <strong>Approved</strong> STP version; the analyst cannot edit method text, only enter actual lab data, and every worksheet keeps the exact STP version used. Upload → reviewer verifies the text → authorized role approves.</div>' +
+      '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>STP No.</th><th>Version</th><th>Effective</th><th>Product</th><th>Tests</th><th>Status</th><th>Source file</th><th></th></tr></thead><tbody>' + rows + extra + "</tbody></table></div></div>";
   };
+
+  function stpTestsFor(p) {
+    if (typeof SD.buildStp === "function") return SD.buildStp(p).tests;
+    return p.tests.map(function (tid) { var t = SD.testById(tid); return { testId: tid, theory: t ? (t.theory || t.specification) : "", variables: [], formula: null }; });
+  }
+
+  function openUploadStp() {
+    if (STP_UPLOAD_ROLES.indexOf(S.role) < 0) { alert("Only an authorized role (Manager / Group Leader / Admin / Protocol Preparer) can upload a controlled STP."); return; }
+    var popts = '<option value="">— new product / not linked —</option>' + S.protocols.map(function (p) { return '<option value="' + h(p.id) + '">' + h(p.product + " · " + p.protocolNo + " · STP " + stpNoOf(p)) + "</option>"; }).join("");
+    openOverlay(drawerHead("Upload STP", "controlled document — PDF / DOCX / TXT") + '<div class="drawer-b">' +
+      '<label class="fld">Belongs to protocol (optional)</label><select class="select" id="stpProto">' + popts + "</select>" +
+      '<label class="fld" style="margin-top:10px">STP No.</label><input class="input" id="stpNo" placeholder="e.g. AL-009-04" />' +
+      '<label class="fld" style="margin-top:10px">Product code</label><input class="input" id="stpCode" />' +
+      '<label class="fld" style="margin-top:10px">Product name</label><input class="input" id="stpProduct" />' +
+      '<label class="fld" style="margin-top:10px">Version</label><input class="input" id="stpVersion" value="V1.0" />' +
+      '<label class="fld" style="margin-top:10px">Effective date</label><input class="input" type="date" id="stpEff" value="' + today() + '" />' +
+      '<label class="fld" style="margin-top:10px">STP file (PDF / DOCX / TXT)</label><input class="input" type="file" id="stpFile" accept=".pdf,.docx,.doc,.txt" />' +
+      '<label class="fld" style="margin-top:10px">STP text / instructions (auto-filled for TXT; paste for PDF/DOCX until OCR is configured)</label><textarea class="input" id="stpText" rows="6" placeholder="Paste the approved method text here; a reviewer verifies it before approval."></textarea>' +
+      '<p class="muted" style="margin-top:8px">The file is uploaded to Supabase Storage when a bucket is configured; otherwise the file name/size and the verified text are stored. Nothing is usable until a reviewer verifies the text and an authorized role approves it.</p>' +
+      '<div style="margin-top:14px"><button class="btn primary" data-act="stp-upload-save">Save as Draft</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
+      "</div>");
+  }
+
+  function stpUploadSave() {
+    if (STP_UPLOAD_ROLES.indexOf(S.role) < 0) { alert("Not authorized to upload a controlled STP."); return; }
+    var fileEl = document.getElementById("stpFile");
+    var file = (fileEl && fileEl.files && fileEl.files[0]) || null;
+    var protoId = ((document.getElementById("stpProto") || {}).value) || "";
+    var p = protoId ? protocolOf(protoId) : null;
+    var stpNo = (((document.getElementById("stpNo") || {}).value) || "").trim() || (p ? stpNoOf(p) : "");
+    if (!stpNo) { alert("STP No. is required."); return; }
+    var version = (((document.getElementById("stpVersion") || {}).value) || "").trim() || "V1.0";
+    var eff = ((document.getElementById("stpEff") || {}).value) || today();
+    var text = (((document.getElementById("stpText") || {}).value) || "").trim();
+    var rec = {
+      id: p ? p.id : ("stp_" + Date.now()),
+      stpNumber: stpNo, version: version, effectiveDate: eff, status: "Draft",
+      product: (((document.getElementById("stpProduct") || {}).value) || "").trim() || (p ? p.product : ""),
+      productCode: (((document.getElementById("stpCode") || {}).value) || "").trim(),
+      auto: false, text: text,
+      sourceFile: file ? { name: file.name, size: file.size, type: file.type } : null,
+      tests: p ? stpTestsFor(p) : [],
+      history: [{ at: stamp(), user: S.currentUser, action: "uploaded", note: (file ? file.name : "no file") + "; " + stpNo + " " + version }]
+    };
+    function finish() {
+      S.stps = S.stps || [];
+      var idx = -1;
+      S.stps.forEach(function (x, i) { if (x.id === rec.id || (x.auto === false && x.stpNumber === stpNo && x.version === version)) idx = i; });
+      if (idx >= 0) S.stps[idx] = rec; else S.stps.push(rec);
+      store.audit({ user: S.currentUser, action: "create", entity: "stp", entityId: stpNo, note: "STP uploaded (" + version + ")" });
+      store.save(); closeOverlay(); render();
+    }
+    if (file && SD.db && SD.db.enabled && SD.db.enabled() && SD.db.upload) {
+      SD.db.upload("stp-documents", encodeURIComponent(stpNo) + "/" + encodeURIComponent(version) + "/" + encodeURIComponent(file.name), file)
+        .then(function () { rec.storage = { bucket: "stp-documents", path: stpNo + "/" + version + "/" + file.name }; })
+        .catch(function (e) { rec.storageError = String((e && e.message) || e); })
+        .then(finish);
+    } else { finish(); }
+  }
+
+  function openStpVerify(id) {
+    var sp = stpFor(id); if (!sp) { alert("STP not found."); return; }
+    var sf = sp.sourceFile ? (sp.sourceFile.name + " · " + Math.round((sp.sourceFile.size || 0) / 1024) + " KB") : (sp.auto ? "Auto (from protocol)" : "—");
+    var canApprove = STP_APPROVE_ROLES.indexOf(S.role) >= 0;
+    openOverlay(drawerHead("Verify STP Content", sp.stpNumber + " · " + sp.version) + '<div class="drawer-b">' +
+      '<dl class="meta"><dt>Status</dt><dd>' + h(sp.status || "Draft") + "</dd><dt>Product</dt><dd>" + h(sp.product || "—") + "</dd><dt>Source file</dt><dd>" + h(sf) + "</dd><dt>Tests</dt><dd>" + ((sp.tests || []).length) + "</dd></dl>" +
+      (sp.text ? "" : '<div class="notice">No text extracted yet. Paste the approved STP text below, or configure OCR/PDF extraction.</div>') +
+      '<label class="fld" style="margin-top:10px">Extracted / approved STP text (reviewer verifies)</label><textarea class="input" id="stpVerifyText" rows="10">' + h(sp.text || "") + "</textarea>" +
+      '<div style="margin-top:14px"><button class="btn primary" data-act="stp-verify-save" data-id="' + h(sp.id) + '">Save verified text</button>' +
+      (canApprove ? ' <button class="btn" data-act="stp-approve" data-id="' + h(sp.id) + '">Approve</button> <button class="btn danger" data-act="stp-reject" data-id="' + h(sp.id) + '">Reject</button>' : "") +
+      ' <button class="btn ghost" data-act="close-overlay">Close</button></div>' +
+      '<p class="muted" style="margin-top:8px">The analyst cannot edit STP text. A reviewer verifies it; an authorized role approves it. Approved versions are used for worksheets and are never overwritten silently (history is kept).</p>' +
+      "</div>");
+  }
+
+  function stpVerifySave(id) {
+    var sp = stpFor(id); if (!sp) return;
+    var el = document.getElementById("stpVerifyText");
+    sp.text = el ? String(el.value) : (sp.text || "");
+    sp.status = "Verified";
+    sp.history = sp.history || [];
+    sp.history.push({ at: stamp(), user: S.currentUser, action: "verified", note: "Text verified (" + sp.text.length + " chars)" });
+    store.audit({ user: S.currentUser, action: "update", entity: "stp", entityId: sp.stpNumber, field: "status", oldValue: "Draft", newValue: "Verified" });
+    store.save(); closeOverlay(); render();
+  }
+
+  function stpSetStatus(id, status, note) {
+    var sp = stpFor(id); if (!sp) return;
+    if (STP_APPROVE_ROLES.indexOf(S.role) < 0) { alert("Only a Manager / Group Leader / Admin can " + status.toLowerCase() + " an STP."); return; }
+    var before = sp.status;
+    sp.status = status;
+    sp.history = sp.history || [];
+    sp.history.push({ at: stamp(), user: S.currentUser, action: status.toLowerCase(), note: note || "" });
+    store.audit({ user: S.currentUser, action: "update", entity: "stp", entityId: sp.stpNumber, field: "status", oldValue: before, newValue: status, note: note });
+    store.save(); closeOverlay(); render();
+  }
 
   VIEWS.users = function () {
     var rows = S.users.map(function (u) {
@@ -1987,7 +2110,9 @@
   var wsState = { protocolId: null, selected: [], results: {}, raw: {} };
 
   function openWorksheet(preselectId) {
-    var opts = S.protocols.map(function (p) { var sn = (stpFor(p.id) || {}).stpNumber || stpNoOf(p); return '<option value="' + h(p.id) + '"' + (preselectId === p.id ? " selected" : "") + ">" + h(sn + " — " + p.product + " · " + p.protocolNo) + "</option>"; }).join("");
+    var usable = S.protocols.filter(function (p) { var sp = stpFor(p.id); return !sp || (sp.status || "Draft") === "Approved"; });
+    var opts = usable.map(function (p) { var sn = (stpFor(p.id) || {}).stpNumber || stpNoOf(p); return '<option value="' + h(p.id) + '"' + (preselectId === p.id ? " selected" : "") + ">" + h(sn + " — " + p.product + " · " + p.protocolNo) + "</option>"; }).join("");
+    if (!opts) opts = '<option value="">No approved STP available — upload and approve one in STP Master</option>';
     openOverlay(drawerHead("New Analysis Worksheet", "select STP → select tests → enter weights") + '<div class="drawer-b">' +
       '<label class="fld">STP Number (read-only source)</label><select class="select" id="wsStp">' + opts + "</select>" +
       '<div style="margin-top:12px"><div class="eyebrow">Tests (from the protocol — tick the ones to analyse)</div><div id="wsTests" class="ws-tests"></div></div>' +
@@ -2069,23 +2194,27 @@
     wsState.selected.forEach(function (tid) {
       var t = SD.testById(tid);
       var rec = ((stp && stp.tests) || []).filter(function (x) { return x.testId === tid; })[0] || {};
-      var raw = {}, value = "", numeric = NaN;
+      var raw = {}, value = "", numeric = NaN, missing = false;
       if (rec.variables && rec.variables.length) {
         rec.variables.forEach(function (v) {
           var el = document.getElementById("ws_in_" + tid + "_" + v.name);
           raw[v.name] = el ? el.value : "";
         });
         var vars = {};
-        rec.variables.forEach(function (v) { vars[v.name] = raw[v.name] !== "" ? parseFloat(raw[v.name]) : NaN; });
-        try { value = SD.evalFormula(rec.formula, vars); numeric = value; } catch (e) { value = "Error"; numeric = NaN; }
+        rec.variables.forEach(function (v) { var n = raw[v.name] !== "" ? parseFloat(raw[v.name]) : NaN; vars[v.name] = n; if (isNaN(n)) missing = true; });
+        if (!missing) { try { value = SD.evalFormula(rec.formula, vars); numeric = value; } catch (e) { value = "Error"; numeric = NaN; } }
       } else {
         var rEl = document.getElementById("ws_in_" + tid + "_result");
         raw.result = rEl ? rEl.value : "";
         value = raw.result; numeric = parseFloat(value);
+        if (raw.result === "") missing = true;
       }
       if (typeof value === "number" && !isNaN(value)) value = Math.round(value * 1000) / 1000;
       wsState.raw[tid] = raw;
-      wsState.results[tid] = { value: value === "" || value === null ? "—" : value, verdict: SD.checkSpec(numeric, t.specification) };
+      wsState.results[tid] = {
+        value: missing ? "Missing input — not calculated" : (value === "" || value === null ? "—" : value),
+        verdict: missing ? "MANUAL" : SD.checkSpec(numeric, t.specification)
+      };
     });
     renderWsSheet();
   }
@@ -2373,6 +2502,12 @@
     else if (act === "proto-changes") openChangesModal(id);
     else if (act === "ws-new") openWorksheet(null);
     else if (act === "ws-new-stp") openWorksheet(id);
+    else if (act === "stp-upload") openUploadStp();
+    else if (act === "stp-upload-save") stpUploadSave();
+    else if (act === "stp-verify") openStpVerify(id);
+    else if (act === "stp-verify-save") stpVerifySave(id);
+    else if (act === "stp-approve") stpSetStatus(id, "Approved", "Approved for use");
+    else if (act === "stp-reject") stpSetStatus(id, "Rejected", "Rejected by reviewer");
     else if (act === "ep-new") openEarlyPull(null);
     else if (act === "ep-open") { var sp0 = store.getSample(id); openEarlyPull(sp0 ? sp0.sampleId : null); }
     else if (act === "ep-reviewer-approve") epAction(id, "reviewer_approve", "Reviewer approved");
@@ -2440,7 +2575,11 @@
     var btn = e.target.closest("[data-act]");
     if (!btn) return;
     var act = btn.getAttribute("data-act"), id = btn.getAttribute("data-id");
-    if (act === "wd-save") {
+    if (act === "stp-upload-save") { stpUploadSave(); }
+    else if (act === "stp-verify-save") { stpVerifySave(id); }
+    else if (act === "stp-approve") { stpSetStatus(id, "Approved", "Approved for use"); }
+    else if (act === "stp-reject") { stpSetStatus(id, "Rejected", "Rejected by reviewer"); }
+    else if (act === "wd-save") {
       var dateEl = document.getElementById("wdDate");
       var val = dateEl ? dateEl.value : "";
       if (!val) { alert("Choose an actual withdrawal date."); return; }
@@ -2632,6 +2771,12 @@
 
   function onOverlayChange(e) {
     if (e.target && e.target.id === "wsStp") renderWsTests();
+    if (e.target && e.target.id === "stpProto") { var sp0 = protocolOf(e.target.value); if (sp0) { var n = document.getElementById("stpNo"); if (n && !n.value) n.value = stpNoOf(sp0); var pn = document.getElementById("stpProduct"); if (pn && !pn.value) pn.value = sp0.product; } }
+    if (e.target && e.target.id === "stpFile") {
+      var f = e.target.files && e.target.files[0];
+      var ta = document.getElementById("stpText");
+      if (f && ta && /\.txt$/i.test(f.name) && typeof FileReader !== "undefined") { var fr = new FileReader(); fr.onload = function () { ta.value = String(fr.result || ""); }; fr.readAsText(f); }
+    }
     if (e.target && e.target.id === "epSample") renderEpFields();
     if (e.target && e.target.id === "epReqDate") recomputeEp();
     if (e.target && (e.target.id === "npTp" || e.target.id === "npTests")) renderNpSchedule();

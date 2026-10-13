@@ -43,6 +43,20 @@
     });
   }
 
+  /* Upload a controlled document to a Supabase Storage bucket using the publishable
+   * key (server-side RLS decides who may write). No secret key is used in the browser. */
+  function upload(bucket, path, file) {
+    var c = cfg();
+    return fetch(c.url + "/storage/v1/object/" + encodeURIComponent(bucket) + "/" + path, {
+      method: "POST",
+      headers: { "apikey": c.key, "Authorization": "Bearer " + c.key, "x-upsert": "true", "Content-Type": file.type || "application/octet-stream" },
+      body: file
+    }).then(function (r) {
+      if (!r.ok) throw new Error("Storage upload failed (HTTP " + r.status + ")" + (r.status === 404 ? " — bucket '" + bucket + "' missing" : ""));
+      return true;
+    });
+  }
+
   global.SD = global.SD || {};
-  global.SD.db = { enabled: enabled, pull: pull, push: push };
+  global.SD.db = { enabled: enabled, pull: pull, push: push, upload: upload };
 })(typeof window !== "undefined" ? window : globalThis);
