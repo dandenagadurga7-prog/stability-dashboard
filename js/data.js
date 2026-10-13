@@ -9,14 +9,14 @@
   var off = function (n) { return SD.dates.addDays(SD.dates.todayISO(), n); };
 
   var TEST_LIBRARY = [
-    { id: "appearance", name: "Description", method: "Visual", specification: "White, circular, biconvex film-coated tablet; free from visible defects", unit: "" },
-    { id: "identification", name: "Identification", method: "HPLC", specification: "Principal peak RT corresponds to that of the standard", unit: "" },
-    { id: "assay", name: "Assay", method: "HPLC", specification: "95.0% – 105.0%", unit: "%" },
-    { id: "related", name: "Related Substances", method: "HPLC", specification: "Any individual impurity ≤ 0.5%; Total impurities ≤ 2.0%", unit: "%" },
-    { id: "dissolution", name: "Dissolution", method: "USP Apparatus II, 900 mL", specification: "Not less than 80% (Q) in 30 minutes", unit: "%" },
-    { id: "water", name: "Water Content", method: "Karl Fischer", specification: "Not more than 3.0% w/w", unit: "% w/w" },
-    { id: "ph", name: "pH", method: "Potentiometry", specification: "4.5 – 7.0", unit: "" },
-    { id: "uniformity", name: "Uniformity of Dosage Units", method: "HPLC", specification: "Complies (Acceptance Value ≤ 15.0)", unit: "" },
+    { id: "appearance", name: "Description", method: "Visual", specification: "White, circular, biconvex film-coated tablet; free from visible defects", unit: "", reference: "Ph. Eur Current Edition" },
+    { id: "identification", name: "Identification", method: "HPLC", specification: "Principal peak RT corresponds to that of the standard", unit: "", reference: "Ph. Eur Current Edition" },
+    { id: "assay", name: "Assay", method: "HPLC", specification: "95.0% – 105.0%", unit: "%", reference: "In-House" },
+    { id: "related", name: "Related Substances", method: "HPLC", specification: "Any individual impurity ≤ 0.5%; Total impurities ≤ 2.0%", unit: "%", reference: "In-House" },
+    { id: "dissolution", name: "Dissolution", method: "USP Apparatus II, 900 mL", specification: "Not less than 80% (Q) in 30 minutes", unit: "%", reference: "In-House" },
+    { id: "water", name: "Water Content", method: "Karl Fischer", specification: "Not more than 3.0% w/w", unit: "% w/w", reference: "In-House" },
+    { id: "ph", name: "pH", method: "Potentiometry", specification: "4.5 – 7.0", unit: "", reference: "Ph. Eur Current Edition" },
+    { id: "uniformity", name: "Uniformity of Dosage Units", method: "HPLC", specification: "Complies (Acceptance Value ≤ 15.0)", unit: "", reference: "In-House" },
 
     /* --- TROFINETIDE, exactly as printed on the supplied Stability Report
        (Hetero R&D Kazipally, Format F-02-01/ARD015). These are real, not demo. --- */

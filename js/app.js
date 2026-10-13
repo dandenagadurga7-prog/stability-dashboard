@@ -229,6 +229,7 @@
     if (name === "project" && param) return { name: "project", param: param };
     if (name === "datasheet" && param) return { name: "datasheet", param: param };
     if (name === "protocoldoc" && param) return { name: "protocoldoc", param: param };
+    if (name === "stdoc" && param) return { name: "stdoc", param: param };
     var valid = NAV.map(function (n) { return n[0]; });
     if (valid.indexOf(name) < 0) return { name: "dashboard", param: null };
     return { name: name, param: param };
@@ -250,6 +251,7 @@
     documentation: ["Documentation", "Auto-generated controlled documents"],
     "final-reports": ["Final Reports", "Assemble and approve the final stability report"],
     stp: ["STP Master", "Standard Test Procedures and versions"],
+    stdoc: ["Standard Test Procedure", "STP document — trial template"],
     users: ["Users & Roles", "Team, roles and access"],
     reports: ["Reports", "Per-time-point stability report generation"],
     report: ["Stability Report", "Preview and approval"],
@@ -864,7 +866,7 @@
       var sp = stpFor(p.id);
       var stpNo = (sp && sp.stpNumber) || stpNoOf(p);
       var status = sp ? (sp.status || "Draft") : "Draft";
-      var acts = '<button class="btn small" data-act="protocol-open" data-id="' + p.id + '">Methods</button>';
+      var acts = '<button class="btn small" data-act="protocol-open" data-id="' + p.id + '">Methods</button> <a class="btn small" href="#/stdoc/' + p.id + '">Document</a>';
       if (status === "Approved") acts += ' <button class="btn small primary" data-act="ws-new-stp" data-id="' + p.id + '">Worksheet</button>';
       else acts += ' <button class="btn small" data-act="stp-verify" data-id="' + p.id + '">Verify text</button>';
       if (status !== "Approved" && STP_APPROVE_ROLES.indexOf(S.role) >= 0) acts += ' <button class="btn small primary" data-act="stp-approve" data-id="' + p.id + '">Approve</button> <button class="btn small danger" data-act="stp-reject" data-id="' + p.id + '">Reject</button>';
@@ -874,7 +876,7 @@
     var extra = (S.stps || []).filter(function (sp) {
       return sp && !S.protocols.some(function (p) { return p.id === sp.id || stpNoOf(p) === sp.stpNumber; });
     }).map(function (sp) {
-      var acts = '<button class="btn small" data-act="stp-verify" data-id="' + h(sp.id) + '">Verify text</button>';
+      var acts = '<a class="btn small" href="#/stdoc/' + h(sp.id) + '">Document</a> <button class="btn small" data-act="stp-verify" data-id="' + h(sp.id) + '">Verify text</button>';
       if (sp.status !== "Approved" && STP_APPROVE_ROLES.indexOf(S.role) >= 0) acts += ' <button class="btn small primary" data-act="stp-approve" data-id="' + h(sp.id) + '">Approve</button>';
       return "<tr><td><strong>" + h(sp.stpNumber) + "</strong></td><td>" + h(sp.version) + "</td><td>" + h(fmt(sp.effectiveDate)) + '</td><td class="wrap">' + h(sp.product || "—") + '</td><td class="num">' + ((sp.tests || []).length) + "</td><td>" + stpStatusBadge(sp.status) + '</td><td class="wrap">' + h(stpSourceText(sp)) + "</td><td>" + acts + "</td></tr>";
     }).join("");
@@ -981,6 +983,43 @@
     store.audit({ user: S.currentUser, action: "update", entity: "stp", entityId: sp.stpNumber, field: "status", oldValue: before, newValue: status, note: note });
     store.save(); closeOverlay(); render();
   }
+
+  /* Trial STP document — rendered in the supplied Hetero STP layout (AL-009-04).
+     Clearly labelled DEMO: specifications are placeholders until the approved STP is supplied. */
+  VIEWS.stdoc = function (id) {
+    var p = protocolOf(id);
+    var sp = stpFor(id) || (S.stps || []).filter(function (x) { return x.id === id; })[0];
+    if (!p && !sp) return notFound();
+    var stpNo = sp ? sp.stpNumber : stpNoOf(p);
+    var version = sp ? sp.version : (p ? p.version : "");
+    var eff = sp ? sp.effectiveDate : (p ? p.effectiveDate : "");
+    var product = (sp && sp.product) || (p && p.product) || "—";
+    var status = sp ? (sp.status || "Draft") : "—";
+    var tids = (sp && sp.tests && sp.tests.length) ? sp.tests.map(function (r) { return r.testId; }) : (p ? p.tests : []);
+    var rows = tids.map(function (tid, i) {
+      var t = SD.testById(tid) || { name: tid, specification: "", reference: "" };
+      return '<tr><td class="num">' + h(t.section || ((i + 1) + ".0")) + "</td><td>" + h(t.name) + '</td><td class="wrap">' + h(t.specification || "—") + "</td><td>" + h(t.reference || "In-House") + "</td></tr>";
+    }).join("");
+    return '<div class="toolbar"><a class="btn" href="#/stp">← STP Master</a><div class="grow"></div><span class="pill">' + h(status) + '</span> <button class="btn primary" data-act="doc-print">Print / PDF</button></div>' +
+      '<div class="notice"><strong>DEMO / trial template — not the approved STP.</strong> The specifications below are placeholders until the approved STP for ' + h(product) + " is supplied and approved in STP Master.</div>" +
+      '<div class="report-preview">' +
+        '<div class="rp-head"><div><h2 style="text-align:left">HETERO LABS LIMITED (UNIT-I)</h2><div style="color:var(--muted);font-size:11px">STANDARD TEST PROCEDURE</div></div>' +
+          '<div style="text-align:right"><div style="color:var(--muted);font-size:11px">RESTRICTED CIRCULATION<br>FOR AUTHORIZED USE ONLY</div><strong style="border:1px solid var(--line-strong);padding:4px 8px;border-radius:4px;font-family:var(--serif)">HETERO</strong></div></div>' +
+        "<table><tbody>" +
+          "<tr><th>STP No.</th><td>" + h(stpNo) + "</td><th>Effective</th><td>" + h(fmt(eff)) + "</td></tr>" +
+          "<tr><th>Supersedes</th><td>—</td><th>Dated</th><td>—</td></tr>" +
+          "<tr><th>Department</th><td>Quality Control</td><th>Page</th><td>1 of 1</td></tr>" +
+          '<tr><th>Title</th><td colspan="3">' + h(product) + " · Version " + h(version) + "</td></tr>" +
+        "</tbody></table>" +
+        '<h3 class="section-title">Tests and specifications</h3>' +
+        '<div class="table-wrap"><table class="data"><thead><tr><th>S.No.</th><th>Test</th><th>Specification</th><th>Reference</th></tr></thead><tbody>' + rows + "</tbody></table></div>" +
+        '<div class="grid-3" style="margin-top:18px">' +
+          '<div class="card"><div class="card-b"><div class="eyebrow">Prepared by</div><div style="height:46px"></div><div class="muted">Date: ____ / ____ / ________</div></div></div>' +
+          '<div class="card"><div class="card-b"><div class="eyebrow">Reviewed by</div><div style="height:46px"></div><div class="muted">Date: ____ / ____ / ________</div></div></div>' +
+          '<div class="card"><div class="card-b"><div class="eyebrow">Approved by</div><div style="height:46px"></div><div class="muted">Date: ____ / ____ / ________</div></div></div>' +
+        "</div>" +
+      "</div>";
+  };
 
   VIEWS.users = function () {
     var rows = S.users.map(function (u) {
@@ -2508,6 +2547,7 @@
     else if (act === "stp-verify-save") stpVerifySave(id);
     else if (act === "stp-approve") stpSetStatus(id, "Approved", "Approved for use");
     else if (act === "stp-reject") stpSetStatus(id, "Rejected", "Rejected by reviewer");
+    else if (act === "doc-print") { try { if (typeof window !== "undefined" && window.print) window.print(); } catch (e) { /* ignore */ } }
     else if (act === "ep-new") openEarlyPull(null);
     else if (act === "ep-open") { var sp0 = store.getSample(id); openEarlyPull(sp0 ? sp0.sampleId : null); }
     else if (act === "ep-reviewer-approve") epAction(id, "reviewer_approve", "Reviewer approved");

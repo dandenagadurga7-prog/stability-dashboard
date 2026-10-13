@@ -122,6 +122,7 @@ goto("#/withdrawals", "Withdrawal / Pulling Queue");
 goto("#/documentation", "Auto-generated from record data");
 goto("#/final-reports", "Blocked until complete");
 goto("#/stp", "STP No.");
+goto("#/stdoc/p0", "STANDARD TEST PROCEDURE");
 goto("#/users", "Signed-in role");
 goto("#/protocols", "AL-009-04");
 goto("#/project/p0", "Lifecycle");
