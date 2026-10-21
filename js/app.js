@@ -77,11 +77,15 @@
     if (typeof SD.buildStp !== "function") return;
     S.stps = S.stps || [];
     (S.protocols || []).forEach(function (p) {
-      var idx = -1;
-      S.stps.forEach(function (x, i) { if (x && x.id === p.id) idx = i; });
-      if (idx >= 0 && S.stps[idx] && S.stps[idx].auto === false) return;
-      var built = SD.buildStp(p);
-      if (idx >= 0) S.stps[idx] = built; else S.stps.push(built);
+      try {
+        var idx = -1;
+        S.stps.forEach(function (x, i) { if (x && x.id === p.id) idx = i; });
+        if (idx >= 0 && S.stps[idx] && S.stps[idx].auto === false) return;
+        var built = SD.buildStp(p);
+        if (idx >= 0) S.stps[idx] = built; else S.stps.push(built);
+      } catch (e) {
+        if (typeof console !== "undefined") console.error("STP auto-build failed for " + (p && p.protocolNo), e);
+      }
     });
   }
   /* Re-derive protocol tests from the saved schedule so older protocols match the plan (and the STP). */

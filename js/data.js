@@ -414,7 +414,7 @@
         id: p.id, stpNumber: (p.protocolMeta && p.protocolMeta.stpNo) || p.protocolNo, version: p.version, effectiveDate: p.effectiveDate,
         status: "Approved", product: p.product, auto: true, sourceFile: null, text: "", history: [],
         tests: p.tests.map(function (tid) {
-          var t = testById(tid);
+          var t = testById(tid) || { name: tid, specification: "", unit: "", method: "", reference: "", theory: "" };
           var statementLike = /spectrum|pattern|retention time|match|concordant|diffractogram/i.test(t.specification);
           var rec = {
             testId: tid,
