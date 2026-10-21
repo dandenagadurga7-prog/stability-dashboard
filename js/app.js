@@ -3465,7 +3465,7 @@
     if (el) { el.textContent = text; el.style.color = ok ? "#7ee0a8" : ""; }
   }
   var dbConnected = false;
-  if (SD.db && SD.db.enabled()) {
+  if (SD.db && SD.db.enabled() && !(SD.auth && SD.auth.enabled() && !SD.auth.session())) {
     setBackend("Connecting to Supabase…", false);
     SD.db.pull().then(function (remote) {
       var canUseRemote = remote && remote.samples;
@@ -3498,5 +3498,54 @@
   if (typeof location !== "undefined" && /[?&]embed=1(&|$)/.test(String(location.search || ""))) {
     document.body.classList.add("embed");
   }
-  render();
+
+  function showLogin() {
+    var el = document.getElementById("view");
+    if (!el) return;
+    el.innerHTML = '<div class="card" style="max-width:420px;margin:60px auto;padding:24px">' +
+      '<h2 style="margin-top:0">Sign in</h2>' +
+      '<p class="muted">Stability Analysis Management Dashboard</p>' +
+      '<label class="fld">Email</label><input class="input" id="loginEmail" type="email" autocomplete="username" />' +
+      '<label class="fld" style="margin-top:10px">Password</label><input class="input" id="loginPass" type="password" autocomplete="current-password" />' +
+      '<div style="margin-top:16px"><button class="btn primary" id="loginBtn">Sign in</button></div>' +
+      '<p id="loginErr" class="muted" style="color:#bd3b2e;margin-top:10px"></p></div>';
+    var btn = document.getElementById("loginBtn");
+    if (btn) btn.onclick = function () {
+      var em = (document.getElementById("loginEmail") || {}).value || "";
+      var pw = (document.getElementById("loginPass") || {}).value || "";
+      var err = document.getElementById("loginErr");
+      if (err) err.textContent = "";
+      SD.auth.signIn(em, pw).then(function () {
+        if (typeof location !== "undefined" && location.reload) location.reload(); else render();
+      }).catch(function (e) {
+        if (err) err.textContent = String((e && e.message) || e);
+      });
+    };
+  }
+
+  function applyProfileRole() {
+    if (!(SD.auth && SD.auth.enabled() && SD.auth.session())) return;
+    SD.auth.profile().then(function (prof) {
+      if (!prof) return;
+      S.role = prof.role || S.role;
+      S.currentUser = prof.full_name || SD.auth.currentUser() || S.currentUser;
+      var rs = document.getElementById("roleSelect");
+      if (rs) rs.value = S.role;
+      render();
+    });
+  }
+
+  if (SD.auth && SD.auth.enabled()) {
+    var soBtn = document.getElementById("signOutBtn");
+    if (soBtn) { soBtn.style.display = ""; soBtn.onclick = function () { SD.auth.signOut(); if (typeof location !== "undefined" && location.reload) location.reload(); }; }
+    var roleSel = document.getElementById("roleSelect");
+    if (roleSel) roleSel.style.display = "none"; /* role comes from public.profiles, not a dropdown */
+  }
+
+  if (SD.auth && SD.auth.enabled() && !SD.auth.session()) {
+    showLogin();
+  } else {
+    applyProfileRole();
+    render();
+  }
 })();

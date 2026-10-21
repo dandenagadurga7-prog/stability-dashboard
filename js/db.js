@@ -11,10 +11,11 @@
   function enabled() { var c = cfg(); return !!(c.url && c.key && typeof fetch === "function"); }
   function headers() {
     var c = cfg();
+    var t = (global.SD && global.SD.auth && global.SD.auth.token && global.SD.auth.token()) || c.key;
     return {
       "Content-Type": "application/json",
       "apikey": c.key,
-      "Authorization": "Bearer " + c.key
+      "Authorization": "Bearer " + t
     };
   }
 
@@ -47,9 +48,10 @@
    * key (server-side RLS decides who may write). No secret key is used in the browser. */
   function upload(bucket, path, file) {
     var c = cfg();
+    var t = (global.SD && global.SD.auth && global.SD.auth.token && global.SD.auth.token()) || c.key;
     return fetch(c.url + "/storage/v1/object/" + encodeURIComponent(bucket) + "/" + path, {
       method: "POST",
-      headers: { "apikey": c.key, "Authorization": "Bearer " + c.key, "x-upsert": "true", "Content-Type": file.type || "application/octet-stream" },
+      headers: { "apikey": c.key, "Authorization": "Bearer " + t, "x-upsert": "true", "Content-Type": file.type || "application/octet-stream" },
       body: file
     }).then(function (r) {
       if (!r.ok) throw new Error("Storage upload failed (HTTP " + r.status + ")" + (r.status === 404 ? " — bucket '" + bucket + "' missing" : ""));
