@@ -1008,15 +1008,12 @@
   function openStpVerify(id) {
     var sp = stpFor(id); if (!sp) { alert("STP not found."); return; }
     var sf = sp.sourceFile ? (sp.sourceFile.name + " · " + Math.round((sp.sourceFile.size || 0) / 1024) + " KB") : (sp.auto ? "Auto (from protocol)" : "—");
-    var canApprove = STP_APPROVE_ROLES.indexOf(S.role) >= 0;
-    openOverlay(drawerHead("Verify STP Content", sp.stpNumber + " · " + sp.version) + '<div class="drawer-b">' +
-      '<dl class="meta"><dt>Status</dt><dd>' + h(sp.status || "Draft") + "</dd><dt>Product</dt><dd>" + h(sp.product || "—") + "</dd><dt>Source file</dt><dd>" + h(sf) + "</dd><dt>Tests</dt><dd>" + ((sp.tests || []).length) + "</dd></dl>" +
-      (sp.text ? "" : '<div class="notice">No text extracted yet. Paste the approved STP text below, or configure OCR/PDF extraction.</div>') +
-      '<label class="fld" style="margin-top:10px">Extracted / approved STP text (reviewer verifies)</label><textarea class="input" id="stpVerifyText" rows="10">' + h(sp.text || "") + "</textarea>" +
-      '<div style="margin-top:14px"><button class="btn primary" data-act="stp-verify-save" data-id="' + h(sp.id) + '">Save verified text</button>' +
-      (canApprove ? ' <button class="btn" data-act="stp-approve" data-id="' + h(sp.id) + '">Approve</button> <button class="btn danger" data-act="stp-reject" data-id="' + h(sp.id) + '">Reject</button>' : "") +
-      ' <button class="btn ghost" data-act="close-overlay">Close</button></div>' +
-      '<p class="muted" style="margin-top:8px">The analyst cannot edit STP text. A reviewer verifies it; an authorized role approves it. Approved versions are used for worksheets and are never overwritten silently (history is kept).</p>' +
+    openOverlay(drawerHead("STP Content", sp.stpNumber + " · " + sp.version) + '<div class="drawer-b">' +
+      '<dl class="meta"><dt>Status</dt><dd>' + h(sp.status || "Current") + "</dd><dt>Product</dt><dd>" + h(sp.product || "—") + "</dd><dt>Source file</dt><dd>" + h(sf) + "</dd><dt>Tests</dt><dd>" + ((sp.tests || []).length) + "</dd></dl>" +
+      (sp.text ? "" : '<div class="notice">No text extracted yet. Paste the STP text when uploading, or configure OCR/PDF extraction.</div>') +
+      '<label class="fld" style="margin-top:10px">STP text (read-only reference)</label><textarea class="input" id="stpVerifyText" rows="10" readonly>' + h(sp.text || "") + "</textarea>" +
+      '<div style="margin-top:14px"><button class="btn ghost" data-act="close-overlay">Close</button></div>' +
+      '<p class="muted" style="margin-top:8px">The latest uploaded STP is the current version used for worksheets; earlier versions are kept in history.</p>' +
       "</div>");
   }
 
@@ -3079,10 +3076,6 @@
     else if (act === "ws-new-sample") { var wsSample = sampleByRef(id); if (wsSample) openWorksheet(wsSample.protocolId, wsSample.sampleId); }
     else if (act === "stp-upload") openUploadStp();
     else if (act === "stp-upload-save") stpUploadSave();
-    else if (act === "stp-verify") openStpVerify(id);
-    else if (act === "stp-verify-save") stpVerifySave(id);
-    else if (act === "stp-approve") stpSetStatus(id, "Approved", "Approved for use");
-    else if (act === "stp-reject") stpSetStatus(id, "Rejected", "Rejected by reviewer");
     else if (act === "doc-print") { try { if (typeof window !== "undefined" && window.print) window.print(); } catch (e) { /* ignore */ } }
     else if (act === "ep-new") openEarlyPull(null);
     else if (act === "ep-open") { var sp0 = store.getSample(id); openEarlyPull(sp0 ? sp0.sampleId : null); }
@@ -3152,9 +3145,6 @@
     if (!btn) return;
     var act = btn.getAttribute("data-act"), id = btn.getAttribute("data-id");
     if (act === "stp-upload-save") { stpUploadSave(); }
-    else if (act === "stp-verify-save") { stpVerifySave(id); }
-    else if (act === "stp-approve") { stpSetStatus(id, "Approved", "Approved for use"); }
-    else if (act === "stp-reject") { stpSetStatus(id, "Rejected", "Rejected by reviewer"); }
     else if (act === "wd-save") {
       var dateEl = document.getElementById("wdDate");
       var val = dateEl ? dateEl.value : "";
