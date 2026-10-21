@@ -22,6 +22,37 @@
   function today() { return dates.todayISO(); }
   function statusOf(s) { return SD.deriveStatus(s, S.settings, today()); }
   function fmt(d) { return dates.fmt(d); }
+  function docHref(hash, embed) {
+    var path = (typeof location !== "undefined" && location.pathname) ? location.pathname : "/";
+    return path + (embed ? "?embed=1" : "") + hash;
+  }
+  function openDoc(hash) {
+    if (typeof window !== "undefined" && window.open) window.open(docHref(hash), "_blank", "noopener");
+  }
+  /* In-app document viewer: keeps the worksheet underneath so Back returns to the same data. */
+  function docPaneHTML(title, src) {
+    return '<div class="doc-pane"><div class="doc-pane-h"><span class="grow">' + h(title) + '</span><a class="btn small" href="' + h(src) + '" target="_blank" rel="noopener">Open in new tab</a></div><iframe src="' + h(src) + '" title="' + h(title) + '"></iframe></div>';
+  }
+  function openDocOverlay(src, title, src2, title2) {
+    var root = document.getElementById("docOverlay");
+    if (!root) {
+      try { if (src && typeof window !== "undefined" && window.open) window.open(src, "_blank", "noopener"); } catch (e) {}
+      return;
+    }
+    var body = document.getElementById("docOverlayBody");
+    var titleEl = document.getElementById("docOverlayTitle");
+    if (titleEl) titleEl.textContent = title + (src2 ? "  |  " + title2 : "");
+    if (body) body.innerHTML = docPaneHTML(title, src) + (src2 ? docPaneHTML(title2, src2) : "");
+    if (root.style) root.style.display = "flex";
+    if (document.body && document.body.style) document.body.style.overflow = "hidden";
+  }
+  function closeDocOverlay() {
+    var root = document.getElementById("docOverlay");
+    var body = document.getElementById("docOverlayBody");
+    if (body) body.innerHTML = "";
+    if (root && root.style) root.style.display = "none";
+    if (document.body && document.body.style) document.body.style.overflow = "";
+  }
   function statusBadge(def) { return '<span class="badge tone-' + def.tone + '"><span class="dot"></span>' + h(def.label) + "</span>"; }
   function uniq(arr) { var o = {}, out = []; arr.forEach(function (x) { if (x && !o[x]) { o[x] = 1; out.push(x); } }); return out; }
 
@@ -230,6 +261,7 @@
     if (name === "datasheet" && param) return { name: "datasheet", param: param };
     if (name === "protocoldoc" && param) return { name: "protocoldoc", param: param };
     if (name === "stdoc" && param) return { name: "stdoc", param: param };
+    if (name === "review" && param) return { name: "review", param: param, sub: parts[2] || null, sub2: parts[3] || null };
     var valid = NAV.map(function (n) { return n[0]; });
     if (valid.indexOf(name) < 0) return { name: "dashboard", param: null };
     return { name: name, param: param };
@@ -251,6 +283,7 @@
     documentation: ["Documentation", "Auto-generated controlled documents"],
     "final-reports": ["Final Reports", "Assemble and approve the final stability report"],
     stp: ["STP Master", "Standard Test Procedures and versions"],
+    review: ["Protocol + STP review", "Read-only side-by-side check"],
     stdoc: ["Standard Test Procedure", "STP document — trial template"],
     users: ["Users & Roles", "Team, roles and access"],
     reports: ["Reports", "Per-time-point stability report generation"],
@@ -267,14 +300,14 @@
 
   function render() {
     route = parseHash();
-    var target = route.name === "sample" ? "samples" : ((route.name === "project" || route.name === "datasheet" || route.name === "protocoldoc") ? "protocols" : route.name);
+    var target = route.name === "sample" ? "samples" : (route.name === "review" ? "analysis" : ((route.name === "project" || route.name === "datasheet" || route.name === "protocoldoc") ? "protocols" : route.name));
     var title = TITLES[route.name] || ["Dashboard", ""];
     document.getElementById("pageTitle").textContent = title[0];
     document.getElementById("pageSub").textContent = title[1];
     Array.prototype.forEach.call(document.querySelectorAll("[data-nav]"), function (a) {
       a.classList.toggle("active", a.getAttribute("data-nav") === target || (route.name === "report" && a.getAttribute("data-nav") === "reports"));
     });
-    var html = (VIEWS[route.name] || VIEWS.dashboard)(route.param);
+    var html = (VIEWS[route.name] || VIEWS.dashboard)(route.param, route.sub, route.sub2);
     document.getElementById("view").innerHTML = html;
     window.scrollTo(0, 0);
   }
@@ -543,7 +576,8 @@
         "<td>" + (d.analysisDue ? fmt(d.analysisDue) : "—") + "</td>" +
         "<td>" + h(s.analyst) + "</td>" +
         "<td>" + statusBadge(st.def) + "</td>" +
-        '<td>' + (s.analysisStart ? '<button class="btn small" data-act="results-open" data-id="' + s.id + '">Enter results</button>' : '<button class="btn small primary" data-act="start-analysis" data-id="' + s.id + '">Start</button>') + "</td></tr>";
+        '<td style="white-space:nowrap">' + (s.analysisStart ? '<button class="btn small" data-act="results-open" data-id="' + s.id + '">Enter results</button>' : '<button class="btn small primary" data-act="start-analysis" data-id="' + s.id + '">Start</button>') +
+        ' <button class="btn small" data-act="ws-new-sample" data-id="' + s.id + '">Worksheet</button></td></tr>';
     }).join("");
     return '<div class="toolbar"><div class="grow"></div><button class="btn primary" data-act="ws-new">+ New analysis worksheet (STP)</button></div>' +
       '<div class="card"><div class="card-h"><h3>Analysis Worklist</h3><span class="hint">withdrawn, in analysis, due soon or overdue</span></div><div class="table-wrap"><table class="data"><thead><tr>' +
@@ -652,6 +686,7 @@
       "<dt>Analyst</dt><dd>" + h(s.analyst) + "</dd>" +
       "<dt>Reviewer</dt><dd>" + h(s.reviewer) + "</dd>" +
       "<dt>Review Status</dt><dd>" + h(s.reviewStatus) + "</dd>" +
+      "<dt>Analysed Against</dt><dd>" + (s.worksheet ? h((s.worksheet.stpNumber || "STP") + " · " + (s.worksheet.stpVersion || "") + " · protocol " + (s.worksheet.protocolNo || "")) : "—") + "</dd>" +
       "</dl></div></div>" +
       "</div>" +
 
@@ -866,7 +901,7 @@
       var sp = stpFor(p.id);
       var stpNo = (sp && sp.stpNumber) || stpNoOf(p);
       var status = sp ? (sp.status || "Draft") : "Draft";
-      var acts = '<button class="btn small" data-act="protocol-open" data-id="' + p.id + '">Methods</button> <a class="btn small" href="#/stdoc/' + p.id + '">Document</a>';
+      var acts = '<button class="btn small" data-act="protocol-open" data-id="' + p.id + '">Methods</button> <a class="btn small" href="#/stdoc/' + p.id + '">Document</a> <a class="btn small" href="#/review/' + p.id + '">Review</a>';
       if (status === "Approved") acts += ' <button class="btn small primary" data-act="ws-new-stp" data-id="' + p.id + '">Worksheet</button>';
       else acts += ' <button class="btn small" data-act="stp-verify" data-id="' + p.id + '">Verify text</button>';
       if (status !== "Approved" && STP_APPROVE_ROLES.indexOf(S.role) >= 0) acts += ' <button class="btn small primary" data-act="stp-approve" data-id="' + p.id + '">Approve</button> <button class="btn small danger" data-act="stp-reject" data-id="' + p.id + '">Reject</button>';
@@ -933,9 +968,32 @@
     };
     function finish() {
       S.stps = S.stps || [];
-      var idx = -1;
-      S.stps.forEach(function (x, i) { if (x.id === rec.id || (x.auto === false && x.stpNumber === stpNo && x.version === version)) idx = i; });
-      if (idx >= 0) S.stps[idx] = rec; else S.stps.push(rec);
+      var activeIdx = -1, sameIdx = -1;
+      S.stps.forEach(function (x, i) {
+        if (x.stpNumber !== stpNo) return;
+        if (p && x.id === p.id) activeIdx = i;
+        if (x.version === version) sameIdx = i;
+      });
+      if (activeIdx >= 0 && S.stps[activeIdx].version === version) {
+        rec.id = p.id;
+        S.stps[activeIdx] = rec;
+      } else if (activeIdx >= 0) {
+        /* a new revision supersedes the active one but keeps it selectable for worksheets already documented against it */
+        var oldRec = S.stps[activeIdx];
+        oldRec.id = "stp_arch_" + Date.now() + "_" + String(oldRec.version || "v").replace(/[^A-Za-z0-9]/g, "");
+        oldRec.archived = true;
+        oldRec.supersededBy = version;
+        oldRec.history = oldRec.history || [];
+        oldRec.history.push({ at: stamp(), user: S.currentUser, action: "superseded", note: "Superseded by " + version });
+        rec.id = p.id;
+        S.stps.push(rec);
+      } else if (sameIdx >= 0) {
+        rec.id = S.stps[sameIdx].id;
+        S.stps[sameIdx] = rec;
+      } else {
+        rec.id = p ? p.id : ("stp_" + Date.now());
+        S.stps.push(rec);
+      }
       store.audit({ user: S.currentUser, action: "create", entity: "stp", entityId: stpNo, note: "STP uploaded (" + version + ")" });
       store.save(); closeOverlay(); render();
     }
@@ -1000,7 +1058,8 @@
       var t = SD.testById(tid) || { name: tid, specification: "", reference: "" };
       return '<tr><td class="num">' + h(t.section || ((i + 1) + ".0")) + "</td><td>" + h(t.name) + '</td><td class="wrap">' + h(t.specification || "—") + "</td><td>" + h(t.reference || "In-House") + "</td></tr>";
     }).join("");
-    return '<div class="toolbar"><a class="btn" href="#/stp">← STP Master</a><div class="grow"></div><span class="pill">' + h(status) + '</span> <button class="btn primary" data-act="doc-print">Print / PDF</button></div>' +
+    var reviewId = p ? p.id : (sp ? sp.id : id);
+    return '<div class="toolbar"><a class="btn" href="#/stp">← STP Master</a><a class="btn" href="#/review/' + reviewId + '">Protocol + STP review</a><div class="grow"></div><span class="pill">' + h(status) + '</span> <button class="btn primary" data-act="doc-print">Print / PDF</button></div>' +
       '<div class="notice"><strong>DEMO / trial template — not the approved STP.</strong> The specifications below are placeholders until the approved STP for ' + h(product) + " is supplied and approved in STP Master.</div>" +
       '<div class="report-preview">' +
         '<div class="rp-head"><div><h2 style="text-align:left">HETERO LABS LIMITED (UNIT-I)</h2><div style="color:var(--muted);font-size:11px">STANDARD TEST PROCEDURE</div></div>' +
@@ -1019,6 +1078,34 @@
           '<div class="card"><div class="card-b"><div class="eyebrow">Approved by</div><div style="height:46px"></div><div class="muted">Date: ____ / ____ / ________</div></div></div>' +
         "</div>" +
       "</div>";
+  };
+
+  VIEWS.review = function (id, sampleId, stpId) {
+    var p = protocolOf(id);
+    if (!p) return notFound();
+    var s = sampleId ? sampleByRef(sampleId) : null;
+    var sp = (stpId && stpRecordById(stpId)) || stpFor(id);
+    var localStp = (wsPickedStp && wsPickedStp.url && wsPickedStp.protocolId === id) ? wsPickedStp : null;
+    var stpNo = localStp ? localStp.stpNumber : (sp ? sp.stpNumber : stpNoOf(p));
+    var version = localStp ? localStp.version : (sp ? sp.version : p.version);
+    function pane(title, sub, src) {
+      return '<div class="review-pane"><div class="review-pane-h"><div><strong>' + h(title) + '</strong><div class="muted">' + h(sub) + '</div></div><a class="btn small" href="' + h(src.replace("?embed=1", "")) + '" target="_blank" rel="noopener">Open in new tab</a></div>' +
+        '<iframe class="review-frame" title="' + h(title) + '" src="' + h(src) + '"></iframe></div>';
+    }
+    return '<div class="toolbar"><a class="btn" href="#/analysis">&larr; Analysis</a><div class="grow"></div><span class="pill">Read-only</span> <button class="btn" onclick="window.print()">Print review</button></div>' +
+      '<div class="notice info"><strong>Read-only review view.</strong> The protocol and the STP are opened together so the reviewer can check the recorded data against both. These documents are selected as references and are not saved into the worksheet; only the entered data is saved.</div>' +
+      '<div class="ws-context">' +
+        '<div class="ws-context-item"><span class="eyebrow">Product</span><strong>' + h(p.product) + '</strong></div>' +
+        '<div class="ws-context-item"><span class="eyebrow">Protocol</span><strong>' + h(p.protocolNo) + '</strong></div>' +
+        '<div class="ws-context-item"><span class="eyebrow">STP</span><strong>' + h(stpNo + " - Rev " + version) + '</strong></div>' +
+        '<div class="ws-context-item"><span class="eyebrow">Batch</span><strong>' + h(s ? s.batch : p.batches.join(", ")) + '</strong></div>' +
+        '<div class="ws-context-item"><span class="eyebrow">Time point / condition</span><strong>' + h(s ? wsTpLabel(s) + " · " + wsCondShort(wsCondText(s)) : "All batches / time points") + '</strong></div>' +
+        '<div class="ws-context-item"><span class="eyebrow">Status</span><strong>' + h(s ? wsDocStatus(s) : "Reference") + '</strong></div>' +
+      '</div>' +
+      '<div class="review-grid">' +
+        pane("Stability Protocol", p.product + " | " + p.protocolNo, docHref("#/protocoldoc/" + id, true)) +
+        pane("Standard Test Procedure", stpNo + " | Rev " + version + (localStp ? " | " + localStp.name : ""), localStp ? localStp.url : docHref("#/stdoc/" + (sp ? sp.id : id), true)) +
+      '</div>';
   };
 
   VIEWS.users = function () {
@@ -1222,7 +1309,7 @@
     if (ps === "UNDER_REVIEW") reviewBtns = '<button class="btn primary" data-act="proto-review-approve" data-id="' + id + '">Reviewer: approve</button> <button class="btn danger" data-act="proto-changes" data-id="' + id + '">Request changes</button> ';
     else if (ps === "PENDING_GL") reviewBtns = '<button class="btn primary" data-act="proto-gl-approve" data-id="' + id + '">Group Leader: approve</button> <button class="btn danger" data-act="proto-changes" data-id="' + id + '">Request changes</button> ';
     else if (ps === "CHANGES_REQUESTED") reviewBtns = '<button class="btn primary" data-act="proto-edit" data-id="' + id + '">Edit protocol &amp; resubmit</button> ';
-    return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> ' + reviewBtns + '<button class="btn" onclick="window.print()">Print / PDF</button></div>' +
+    return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><a class="btn" href="#/review/' + id + '">Protocol + STP review</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> ' + reviewBtns + '<button class="btn" onclick="window.print()">Print / PDF</button></div>' +
       '<div class="report-preview">' +
       '<div class="rp-head"><div><h2 style="text-align:left">HETERO (R&amp;D)<br><small style="font-weight:400;font-size:11px;color:var(--muted)">KAZIPALLY</small></h2><div style="color:var(--muted);font-size:11px">STABILITY PROTOCOL</div></div>' +
       '<div style="text-align:right"><strong style="border:1px solid var(--line-strong);padding:4px 8px;border-radius:4px;font-family:var(--serif)">HETERO</strong></div></div>' +
@@ -2147,38 +2234,436 @@
 
   /* ---------- STP-driven analysis worksheet ---------- */
   var wsState = { protocolId: null, selected: [], results: {}, raw: {} };
+  var wsFileUrl = null;
+  var wsPickedStp = null;
 
-  function openWorksheet(preselectId) {
-    var usable = S.protocols.filter(function (p) { var sp = stpFor(p.id); return !sp || (sp.status || "Draft") === "Approved"; });
-    var opts = usable.map(function (p) { var sn = (stpFor(p.id) || {}).stpNumber || stpNoOf(p); return '<option value="' + h(p.id) + '"' + (preselectId === p.id ? " selected" : "") + ">" + h(sn + " — " + p.product + " · " + p.protocolNo) + "</option>"; }).join("");
-    if (!opts) opts = '<option value="">No approved STP available — upload and approve one in STP Master</option>';
-    openOverlay(drawerHead("New Analysis Worksheet", "select STP → select tests → enter weights") + '<div class="drawer-b">' +
-      '<label class="fld">STP Number (read-only source)</label><select class="select" id="wsStp">' + opts + "</select>" +
-      '<div style="margin-top:12px"><div class="eyebrow">Tests (from the protocol — tick the ones to analyse)</div><div id="wsTests" class="ws-tests"></div></div>' +
-      '<label class="fld" style="margin-top:10px">Attach instrument Excel (optional)</label><input class="input" type="file" id="wsExcel" accept=".xlsx,.xls,.csv" />' +
+  function wsSamplesFor(pid) {
+    return SD.lifecycle.samplesFor(S, pid).slice().sort(function (a, b) {
+      var ba = String(a.batch || ""), bb = String(b.batch || "");
+      if (ba !== bb) return ba.localeCompare(bb);
+      return (a.timePointMonths || 0) - (b.timePointMonths || 0);
+    });
+  }
+  /* time point + condition, without the sample ID (the ID adds nothing for the analyst) */
+  function wsTpLabel(s) {
+    if (!s) return "—";
+    if (s.timePointMonths === 0) return "Initial";
+    if (s.timePointMonths !== null && s.timePointMonths !== undefined && s.timePointMonths !== "") return s.timePointMonths + "M";
+    return s.timePointLabel || "—";
+  }
+  function wsCondText(s) { return (s && (s.condition || s.storageCondition)) || "—"; }
+  /* "25°C ± 2°C / 60% RH ± 5% RH" -> "25°C / 60% RH"; "5±3°C" -> "5°C" */
+  function wsCondShort(cond) {
+    var c = String(cond || "").replace(/\([^)]*\)/g, " ");
+    if (!c.trim() || c.trim() === "—") return "—";
+    var t = c.match(/(-?\d{1,3})(?:\s*(?:±|\+|-)\s*\d{1,3})?\s*(?:°C|C\b)/);
+    var rh = c.match(/(\d{1,3})(?:\s*(?:±|\+|-)\s*\d{1,3})?\s*%\s*(?:RH)?/i);
+    var out = [];
+    if (t) out.push(t[1] + "°C");
+    if (rh) out.push(rh[1] + "% RH");
+    return out.length ? out.join(" / ") : String(cond);
+  }
+  function wsCondOrder(cond) { var m = String(cond || "").match(/(-?\d{1,3})/); return m ? parseInt(m[1], 10) : 9999; }
+  function wsSampleText(s) {
+    return wsTpLabel(s) + " · " + wsCondShort(wsCondText(s)) + " · " + statusOf(s).def.label;
+  }
+  function wsBatchSamples(batch, pid) {
+    return (S.samples || []).filter(function (s) {
+      if (batch && s.batch !== batch) return false;
+      if (pid && s.protocolId !== pid) return false;
+      return true;
+    }).sort(function (a, b) {
+      var ca = wsCondOrder(wsCondText(a)), cb = wsCondOrder(wsCondText(b));
+      if (ca !== cb) return ca - cb;
+      return (a.timePointMonths || 0) - (b.timePointMonths || 0);
+    });
+  }
+  function wsSampleOptions(batch, pid, preselect, compact) {
+    var samples = wsBatchSamples(batch, pid), groups = {}, order = [];
+    samples.forEach(function (s) {
+      var c = wsCondText(s);
+      if (!groups[c]) { groups[c] = []; order.push(c); }
+      groups[c].push(s);
+    });
+    order.sort(function (a, b) { return wsCondOrder(a) - wsCondOrder(b); });
+    var html = order.map(function (c) {
+      return '<optgroup label="' + h("Condition: " + c) + '">' + groups[c].map(function (s) {
+        var selected = preselect && (s.id === preselect || s.sampleId === preselect);
+        var label = compact ? wsTpLabel(s) + " · " + wsCondShort(wsCondText(s)) : wsSampleText(s);
+        return '<option value="' + h(s.sampleId) + '"' + (selected ? " selected" : "") + ">" + h(label) + "</option>";
+      }).join("") + "</optgroup>";
+    }).join("");
+    return html || '<option value="">No scheduled sample for this batch</option>';
+  }
+  /* STP records are versioned; a worksheet uses the revision the analyst picks, and the protocol follows it. */
+  function stpRecordById(id) {
+    var list = S.stps || [];
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+  function protocolForStp(sp) {
+    if (!sp) return null;
+    var p = protocolOf(sp.id);
+    if (p) return p;
+    for (var i = 0; i < S.protocols.length; i++) if (stpNoOf(S.protocols[i]) === sp.stpNumber) return S.protocols[i];
+    if (sp.product) for (var j = 0; j < S.protocols.length; j++) if (S.protocols[j].product === sp.product) return S.protocols[j];
+    return null;
+  }
+  function wsSelectedStp() {
+    var sel = document.getElementById("wsStp");
+    return stpRecordById(sel ? sel.value : "");
+  }
+  function wsSelectedProtocol() {
+    var sel = document.getElementById("wsProtocol");
+    if (sel && sel.value) { var p = protocolOf(sel.value); if (p) return p; }
+    return protocolForStp(wsSelectedStp());
+  }
+  function wsUsableProtocols() {
+    return S.protocols.filter(function (p) {
+      var sp = stpFor(p.id);
+      return !!sp && (sp.status || "Draft") === "Approved";
+    });
+  }
+  function wsBatchEntries() {
+    var out = [], seen = {};
+    wsUsableProtocols().forEach(function (p) {
+      var list = (p.batches || []).slice();
+      wsSamplesFor(p.id).forEach(function (s) { if (s.batch && list.indexOf(s.batch) < 0) list.push(s.batch); });
+      list.forEach(function (b) {
+        var key = p.id + "|" + b;
+        if (!b || seen[key]) return;
+        seen[key] = 1;
+        out.push({ batch: b, pid: p.id, product: p.product, protocolNo: p.protocolNo, count: wsBatchSamples(b, p.id).length });
+      });
+    });
+    return out;
+  }
+  function wsBatchInProtocol(p, batch) {
+    if ((p.batches || []).indexOf(batch) >= 0) return true;
+    return wsBatchSamples(batch, p.id).length > 0;
+  }
+  function wsStpEntries(batch) {
+    var out = [], seen = {};
+    (S.stps || []).forEach(function (sp) {
+      if (seen[sp.id]) return;
+      if ((sp.status || "Draft") !== "Approved") return;
+      var p = protocolForStp(sp);
+      if (!p || !wsBatchInProtocol(p, batch)) return;
+      seen[sp.id] = 1;
+      out.push({ sp: sp, p: p });
+    });
+    wsUsableProtocols().forEach(function (p) {
+      if (!wsBatchInProtocol(p, batch)) return;
+      if (out.some(function (e) { return e.p.id === p.id; })) return;
+      var built = stpFor(p.id);
+      if (built && (built.status || "Draft") === "Approved" && !seen[built.id]) { seen[built.id] = 1; out.push({ sp: built, p: p }); }
+    });
+    out.sort(function (a, b) {
+      var n = String(a.sp.stpNumber || "").localeCompare(String(b.sp.stpNumber || ""));
+      if (n) return n;
+      return String(b.sp.effectiveDate || "").localeCompare(String(a.sp.effectiveDate || ""));
+    });
+    return out;
+  }
+  function wsProtocolEntries(batch) {
+    var out = [], seen = {};
+    wsStpEntries(batch).forEach(function (e) {
+      if (seen[e.p.id]) return;
+      seen[e.p.id] = 1;
+      out.push(e.p);
+    });
+    return out;
+  }
+  function wsProtocolOptions(batch, preselectId) {
+    var html = wsProtocolEntries(batch).map(function (p) {
+      return '<option value="' + h(p.id) + '"' + (preselectId === p.id ? " selected" : "") + ">" + h(p.protocolNo + " | " + p.product + " | Rev " + (p.version || "—")) + "</option>";
+    }).join("");
+    return html || '<option value="">No approved protocol for this batch</option>';
+  }
+  function wsStpOptions(batch, pid, preselectId) {
+    var entries = wsStpEntries(batch).filter(function (e) { return !pid || e.p.id === pid; });
+    var html = entries.map(function (e) {
+      return '<option value="' + h(e.sp.id) + '"' + (preselectId === e.sp.id ? " selected" : "") + ">" + h(e.sp.stpNumber + " | Rev " + (e.sp.version || "—") + " | " + (e.sp.status || "Draft") + " | " + e.p.protocolNo) + "</option>";
+    }).join("");
+    return html || '<option value="">No STP revision for this batch</option>';
+  }
+  function wsDocStatus(s) {
+    if (!s) return "-";
+    if (s.documentationComplete) return "Completed";
+    if (statusOf(s).def.code === "COMPLETED") return "Completed";
+    if (s.analysisCompleteDate) return "Under review";
+    if (s.worksheet) return "In progress";
+    return "Pending";
+  }
+  /* Pick the current-version STP from the analyst's folder; the protocol still comes from the batch. */
+  function wsParseStpFile(name, fallbackNo, fallbackVer) {
+    var base = String(name || "").replace(/\.[a-z0-9]{1,5}$/i, "");
+    var no = base.match(/([A-Z]{2,}(?:[-_\/][A-Z0-9]+)*[-_\/]?STP[-_\/]?\d+)/i);
+    var rev = base.match(/(?:rev|ver|version|v|r)[\s._-]*(\d+(?:[._-]\d+)?)/i);
+    return {
+      stpNumber: no ? no[1] : fallbackNo,
+      version: rev ? rev[1].replace(/[._-]/g, ".") : fallbackVer
+    };
+  }
+  function wsPickedStpLabel() {
+    if (!wsPickedStp) return "";
+    return wsPickedStp.stpNumber + (wsPickedStp.version ? " · Rev " + wsPickedStp.version : "");
+  }
+  function wsPickedStpHTML() {
+    if (!wsPickedStp) return "";
+    return '<div class="notice info" style="margin-top:8px">' +
+      '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><strong>Selected STP file:</strong> <span>' + h(wsPickedStp.name) + "</span>" +
+      '<span class="muted">' + Math.max(1, Math.round((wsPickedStp.size || 0) / 1024)) + " KB</span>" +
+      (wsPickedStp.url ? ' <button class="btn small" data-act="ws-view-picked-stp">Open file</button>' : "") +
+      '<button class="btn small" data-act="ws-pick-stp">Change file</button></div>' +
+      '<div class="grid-2" style="margin-top:6px">' +
+      '<div><label class="fld">STP No.</label><input class="input" id="wsPickedStpNo" value="' + h(wsPickedStp.stpNumber) + '" /></div>' +
+      '<div><label class="fld">Revision</label><input class="input" id="wsPickedStpVer" value="' + h(wsPickedStp.version) + '" /></div>' +
+      "</div>" +
+      '<div class="muted" style="font-size:11px;margin-top:4px">The protocol is paired from the batch. This file is a reference only; its content is not copied into the worksheet.</div></div>';
+  }
+  function wsRefreshPickedStp() {
+    var wrap = document.getElementById("wsPickedWrap");
+    if (wrap) wrap.innerHTML = wsPickedStpHTML();
+    renderWsTests();
+    var headStp = document.getElementById("wsHeadStp");
+    if (headStp && wsPickedStp) headStp.innerHTML = "STP No. " + h(wsPickedStp.stpNumber) + " - Rev " + h(wsPickedStp.version) + " (selected file)";
+  }
+  function wsPickStpFile() {
+    var input = document.getElementById("wsStpFile");
+    if (input) input.click();
+  }
+  function wsUsePickedStp(file) {
+    if (!file) return;
+    var p = wsSelectedProtocol(), sp = wsSelectedStp() || (p ? stpFor(p.id) : null);
+    var baseNo = wsPickedStp ? wsPickedStp.stpNumber : (sp ? sp.stpNumber : (p ? stpNoOf(p) : ""));
+    var baseVer = wsPickedStp ? wsPickedStp.version : (sp ? sp.version : (p ? p.version : ""));
+    var meta = wsParseStpFile(file.name, baseNo, baseVer);
+    var oldUrl = wsPickedStp && wsPickedStp.url;
+    wsPickedStp = {
+      file: file, name: file.name || "STP file", size: file.size || 0, type: file.type || "",
+      stpNumber: meta.stpNumber, version: meta.version, protocolId: p ? p.id : "",
+      url: (typeof URL !== "undefined" && URL.createObjectURL) ? URL.createObjectURL(file) : ""
+    };
+    if (oldUrl && typeof URL !== "undefined" && URL.revokeObjectURL) URL.revokeObjectURL(oldUrl);
+    wsRefreshPickedStp();
+    wsViewPickedStp();
+  }
+  function wsClearPickedStp() {
+    try {
+      if (wsPickedStp && wsPickedStp.url && typeof URL !== "undefined" && URL.revokeObjectURL) URL.revokeObjectURL(wsPickedStp.url);
+    } catch (e) { /* ignore revoked/blocked blob URLs */ }
+    wsPickedStp = null;
+    var wrap = document.getElementById("wsPickedWrap");
+    if (wrap) wrap.innerHTML = "";
+  }
+  function wsSelectedSample() {
+    var el = document.getElementById("wsTimePoint");
+    return sampleByRef(el ? el.value : "");
+  }
+  function wsCtxCell(label, value) {
+    return '<div class="ws-context-item"><span class="eyebrow">' + h(label) + '</span><strong>' + h(value) + "</strong></div>";
+  }
+  function wsContextHTML(preselectSampleId) {
+    var p = wsSelectedProtocol(), sp = wsSelectedStp();
+    if (!p) return '<div class="notice info">Select a batch to see its protocol, STP and time points.</div>';
+    var batchEl = document.getElementById("wsBatch");
+    var batch = batchEl ? batchEl.value : "";
+    var samples = wsBatchSamples(batch, p.id);
+    var tpEl = document.getElementById("wsTimePoint");
+    var want = preselectSampleId || (tpEl ? tpEl.value : "");
+    var s = samples.filter(function (x) { return x.sampleId === want; })[0] || samples[0] || null;
+    var stpLabel = wsPickedStp ? wsPickedStpLabel() + " · selected file" : (sp ? sp.stpNumber + (sp.version ? " · Rev " + sp.version : "") : stpNoOf(p));
+    var cells = [
+      wsCtxCell("Protocol", p.protocolNo + (p.version ? " · " + p.version : "")),
+      wsCtxCell("STP", stpLabel + (sp && sp.status && !wsPickedStp ? " · " + sp.status : "")),
+      wsCtxCell("Product", p.product),
+      wsCtxCell("Batch", batch),
+      '<div class="ws-context-item"><span class="eyebrow">Time point / condition</span>' +
+        (samples.length ? '<select class="select" id="wsTimePoint" style="width:100%;padding:4px 6px;font-size:12px;min-height:26px">' + wsSampleOptions(batch, p.id, s ? s.sampleId : "", true) + "</select>" : '<strong>No scheduled time point</strong>') + "</div>",
+      wsCtxCell("Withdrawal", s ? (s.actualWithdrawal ? "Actual " + fmt(s.actualWithdrawal) : "Planned " + fmt(s.plannedWithdrawal)) : "-"),
+      wsCtxCell("Analysis due", s ? fmt(computeDatesFor(s).analysisDue) : "-"),
+      wsCtxCell("Status", wsDocStatus(s))
+    ];
+    return '<div class="ws-context">' + cells.join("") + "</div>" +
+      (s ? "" : '<div class="notice info" style="margin-top:8px">No scheduled time point for this batch yet. You can still review the method, but results can only be saved to a scheduled batch / condition / time point.</div>');
+  }
+  function wsDocBarHTML() {
+    var p = wsSelectedProtocol(), sp = wsSelectedStp();
+    var stpPart = wsPickedStp ? wsPickedStpLabel() : (sp ? sp.stpNumber + " · Rev " + (sp.version || "—") : (p ? stpNoOf(p) : ""));
+    var pair = p
+      ? stpPart + " + " + p.protocolNo + (p.version ? " · " + p.version : "")
+      : "No STP revision selected";
+    return '<div class="ws-docbar"><div class="grow"><div class="eyebrow">Protocol and STP (read-only reference)</div>' +
+      '<div class="muted" style="font-size:12px">Selected pair: <strong>' + h(pair) + "</strong>." + (wsPickedStp ? ' STP file: <strong>' + h(wsPickedStp.name) + "</strong>." : "") + " Open both documents side by side so the reviewer can check the worksheet against them. These files are not copied into the worksheet; only the data you enter is saved.</div></div>" +
+      '<div class="ws-doc-actions">' +
+      '<button class="btn primary" data-act="ws-open-both">Open protocol + STP</button>' +
+      '<button class="btn" data-act="ws-pick-stp">Open STP</button>' +
+      '<button class="btn" data-act="ws-open-protocol">Open protocol</button>' +
+      (sp && sp.storage && !wsPickedStp ? '<button class="btn" data-act="ws-open-source">Open original STP file</button>' : "") +
+      "</div></div>";
+  }
+  function renderWsContext(preselectSampleId) {
+    var ctx = document.getElementById("wsContext");
+    if (ctx) ctx.innerHTML = wsContextHTML(preselectSampleId);
+    var p = wsSelectedProtocol();
+    var batchEl = document.getElementById("wsBatch");
+    var batch = batchEl ? batchEl.value : "";
+    var tp = document.getElementById("wsTimePoint");
+    if (tp && p) {
+      var samples = wsBatchSamples(batch, p.id);
+      var want = preselectSampleId || tp.value;
+      var s = samples.filter(function (x) { return x.sampleId === want; })[0] || samples[0];
+      if (s) tp.value = s.sampleId;
+    }
+    var docs = document.getElementById("wsDocBar");
+    if (docs) docs.innerHTML = wsDocBarHTML();
+  }
+
+  function wsOpenBoth() {
+    var p = wsSelectedProtocol(), sp = wsSelectedStp();
+    if (!p) { alert("Select an STP / protocol first."); return; }
+    var protocolSrc = docHref("#/protocoldoc/" + p.id, true);
+    var stpTitle = wsPickedStp ? wsPickedStpLabel() : (sp ? sp.stpNumber + " · Rev " + (sp.version || "—") : (p ? stpNoOf(p) : "STP"));
+    var stpSrc = wsPickedStp && wsPickedStp.url ? wsPickedStp.url : (sp ? docHref("#/stdoc/" + sp.id, true) : "");
+    if (!stpSrc) { openDocOverlay(protocolSrc, "Stability Protocol · " + p.protocolNo); return; }
+    openDocOverlay(protocolSrc, "Stability Protocol · " + p.protocolNo, stpSrc, "STP · " + stpTitle + (wsPickedStp ? " · " + wsPickedStp.name : ""));
+  }
+  function wsOpenStp() {
+    var p = wsSelectedProtocol(), sp = wsSelectedStp();
+    if (!p && !sp) { alert("Select an STP first."); return; }
+    var t = wsPickedStp ? wsPickedStpLabel() + " · " + wsPickedStp.name : (sp ? sp.stpNumber + " · Rev " + (sp.version || "—") : (p ? stpNoOf(p) : "STP"));
+    var src = wsPickedStp && wsPickedStp.url ? wsPickedStp.url : docHref("#/stdoc/" + (sp ? sp.id : p.id), true);
+    openDocOverlay(src, "STP · " + t);
+  }
+  function wsViewPickedStp() {
+    if (!wsPickedStp || !wsPickedStp.url) { alert("Choose an STP file first."); return; }
+    openDocOverlay(wsPickedStp.url, "STP · " + wsPickedStpLabel() + " · " + wsPickedStp.name);
+  }
+  function wsOpenProtocol() {
+    var p = wsSelectedProtocol();
+    if (!p) { alert("Select a protocol first."); return; }
+    openDocOverlay(docHref("#/protocoldoc/" + p.id, true), "Stability Protocol · " + p.protocolNo);
+  }
+  function wsOpenSource() {
+    var p = wsSelectedProtocol(), sp = wsSelectedStp() || (p ? stpFor(p.id) : null);
+    if (!sp) { alert("Select an STP first."); return; }
+    if (!sp.storage || !sp.storage.path) { alert("The original STP file is not stored for this STP. Open the STP document instead, or upload the file in STP Master."); return; }
+    var cfg = (typeof window !== "undefined" && window.SD_CONFIG) || {};
+    if (!cfg.url || !cfg.key || typeof fetch !== "function") { alert("Supabase storage is not configured; the original file cannot be opened."); return; }
+    var bucket = sp.storage.bucket || "stp-documents";
+    var path = String(sp.storage.path).split("/").map(encodeURIComponent).join("/");
+    var win = (typeof window !== "undefined" && window.open) ? window.open("", "_blank") : null;
+    fetch(cfg.url + "/storage/v1/object/sign/" + encodeURIComponent(bucket) + "/" + path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "apikey": cfg.key, "Authorization": "Bearer " + cfg.key },
+      body: JSON.stringify({ expiresIn: 600 })
+    }).then(function (r) {
+      return r.json().then(function (j) { if (!r.ok) throw new Error((j && j.message) || ("HTTP " + r.status)); return j; });
+    }).then(function (j) {
+      var u = j.signedURL || j.signedUrl;
+      if (!u) throw new Error("No signed URL returned");
+      var full = /^https?:/i.test(u) ? u : cfg.url + "/storage/v1" + (u.charAt(0) === "/" ? "" : "/") + u;
+      if (win) win.location.href = full; else if (window.open) window.open(full, "_blank", "noopener");
+    }).catch(function (e) {
+      if (win) win.close();
+      alert("Could not open the original STP file: " + e.message);
+    });
+  }
+
+  function showWsAttachedFile() {
+    var el = document.getElementById("wsExcel"), box = document.getElementById("wsFileLink");
+    if (!box) return;
+    var f = el && el.files && el.files[0];
+    if (!f) { box.innerHTML = ""; return; }
+    if (wsFileUrl && typeof window !== "undefined" && window.URL && window.URL.revokeObjectURL) window.URL.revokeObjectURL(wsFileUrl);
+    wsFileUrl = (typeof window !== "undefined" && window.URL && window.URL.createObjectURL) ? window.URL.createObjectURL(f) : null;
+    box.innerHTML = "Selected: <strong>" + h(f.name) + "</strong>" +
+      (wsFileUrl ? ' <a href="' + h(wsFileUrl) + '" target="_blank" rel="noopener">open file</a>' : "") +
+      ' <span class="muted">- view-only for this session; only the file name is saved.</span>';
+  }
+
+  function openWorksheet(preselectId, preselectSampleId) {
+    wsPickedStp = null;
+    var preSample = preselectSampleId ? sampleByRef(preselectSampleId) : null;
+    var batches = wsBatchEntries();
+    var batch = preSample ? preSample.batch : "";
+    var pid = preselectId || (preSample ? preSample.protocolId : "");
+    if (!batch) {
+      var candidates = batches.filter(function (e) { return !pid || e.pid === pid; });
+      var bEntry = candidates.filter(function (e) { return e.count > 0; })[0] || candidates[0] || batches[0];
+      batch = bEntry ? bEntry.batch : "";
+    }
+    if (!batches.some(function (e) { return e.batch === batch; })) batch = batches.length ? batches[0].batch : "";
+    if (!pid && !wsBatchSamples(batch).length) {
+      var withSamples = batches.filter(function (e) { return e.count > 0; })[0];
+      if (withSamples) batch = withSamples.batch;
+    }
+    var stps = wsStpEntries(batch);
+    var usedStp = preSample && preSample.worksheet && preSample.worksheet.stpNumber
+      ? stps.filter(function (e) { return e.sp.stpNumber === preSample.worksheet.stpNumber && e.sp.version === preSample.worksheet.stpVersion; })[0]
+      : null;
+    var chosen = usedStp || (pid ? stps.filter(function (e) { return e.p.id === pid; })[0] : null) || stps[0] || null;
+    var stpId = chosen ? chosen.sp.id : "";
+    var pidForTp = chosen ? chosen.p.id : "";
+    if (preSample && preSample.worksheet && preSample.worksheet.stpSourceFile && preSample.worksheet.stpSourceFile.name && chosen && chosen.p.id === preSample.protocolId) {
+      wsPickedStp = {
+        file: null, name: preSample.worksheet.stpSourceFile.name, size: preSample.worksheet.stpSourceFile.size || 0,
+        type: preSample.worksheet.stpSourceFile.type || "", stpNumber: preSample.worksheet.stpNumber || "",
+        version: preSample.worksheet.stpVersion || "", protocolId: preSample.protocolId, url: ""
+      };
+    }
+    var bopts = batches.map(function (e) {
+      return '<option value="' + h(e.batch) + '"' + (e.batch === batch ? " selected" : "") + ">" + h(e.batch) + "</option>";
+    }).join("") || '<option value="">No approved STP / batch available - upload and approve one in STP Master</option>';
+    openOverlay(drawerHead("New Analysis Worksheet", "select batch -> time point / condition -> tick tests -> enter data") + '<div class="drawer-b">' +
+      '<label class="fld">Batch No.</label><select class="select" id="wsBatch">' + bopts + "</select>" +
+      '<label class="fld" style="margin-top:10px">Protocol (auto from batch — optional)</label><select class="select" id="wsProtocol">' + wsProtocolOptions(batch, pidForTp) + "</select>" +
+      (stps.length > 1 ? '<label class="fld" style="margin-top:10px">STP revision</label>' : "") +
+      '<select class="select" id="wsStp"' + (stps.length > 1 ? "" : ' style="display:none"') + ">" + wsStpOptions(batch, pidForTp, stpId) + "</select>" +
+      '<div id="wsPickedWrap"></div>' +
+      '<div id="wsContext" style="margin-top:10px"></div>' +
+      '<div id="wsDocBar" style="margin-top:10px"></div>' +
+      '<div style="margin-top:14px"><div class="eyebrow">Tests (from the protocol - tick the ones to analyse)</div><div id="wsTests" class="ws-tests"></div></div>' +
+      '<label class="fld" style="margin-top:10px">Attach instrument Excel / supporting file (optional)</label><input class="input" type="file" id="wsExcel" accept=".xlsx,.xls,.csv,.pdf,.docx,.doc,.txt" />' +
+      '<input type="file" id="wsStpFile" accept=".pdf,.docx,.doc,.txt" style="display:none" />' +
+      '<div id="wsFileLink" class="muted" style="margin-top:4px;font-size:12px"></div>' +
       '<div style="margin-top:14px"><button class="btn primary" data-act="ws-load">Load theory &amp; data entry</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
       '<div id="wsSheet" style="margin-top:18px"></div>' +
       "</div>");
-    renderWsTests();
+    var wsBatchEl = document.getElementById("wsBatch");
+    if (wsBatchEl) wsBatchEl.value = batch;
+    var wsProtocolEl = document.getElementById("wsProtocol");
+    if (wsProtocolEl) wsProtocolEl.value = pidForTp;
+    var wsStpEl = document.getElementById("wsStp");
+    if (wsStpEl) wsStpEl.value = stpId;
+    renderWsTests(preselectSampleId);
+    var pickedWrap = document.getElementById("wsPickedWrap");
+    if (pickedWrap) pickedWrap.innerHTML = wsPickedStpHTML();
   }
 
-  function renderWsTests() {
-    var sel = document.getElementById("wsStp");
-    var pid = sel ? sel.value : (S.protocols[0] || {}).id;
-    var p = protocolOf(pid); if (!p) return;
-    var sn = (stpFor(p.id) || {}).stpNumber || stpNoOf(p);
-    var html = '<div class="muted" style="margin:2px 0 8px">' + p.tests.length + " test(s) available from STP " + h(sn) + " (" + h(p.protocolNo) + ") — tick the ones to analyse. The related method / theory loads from the STP when you open a test.</div>" + p.tests.map(function (tid) {
-      var t = SD.testById(tid);
-      return '<label class="check" style="cursor:pointer"><input type="checkbox" data-ws-test="' + h(tid) + '" checked /> <div><div class="c-label">' + h(t.name) + '</div><div class="muted">' + h(t.specification) + "</div></div></label>";
-    }).join("");
-    document.getElementById("wsTests").innerHTML = html;
-    var tpEl = document.getElementById("wsTimePoint");
-    if (tpEl) {
-      var samples = SD.lifecycle.samplesFor(S, pid).sort(function (a, b) { return a.timePointMonths - b.timePointMonths; });
-      tpEl.innerHTML = samples.map(function (s) {
-        return '<option value="' + h(s.id) + '">' + h(s.timePointLabel + " — " + s.sampleId + " · planned " + fmt(s.plannedWithdrawal)) + "</option>";
-      }).join("");
+  function renderWsTests(preselectSampleId) {
+    var p = wsSelectedProtocol();
+    var testsEl = document.getElementById("wsTests");
+    if (!p) {
+      if (testsEl) testsEl.innerHTML = '<div class="muted">Select a batch and STP revision first.</div>';
+      renderWsContext(preselectSampleId);
+      return;
     }
+    var prevChecks = {};
+    Array.prototype.slice.call(document.querySelectorAll("[data-ws-test]")).forEach(function (c) {
+      prevChecks[c.getAttribute("data-ws-test")] = c.checked;
+    });
+    var stp = wsSelectedStp() || stpFor(p.id);
+    var sn = wsPickedStp ? wsPickedStp.stpNumber : ((stp || {}).stpNumber || stpNoOf(p));
+    var sver = wsPickedStp ? wsPickedStp.version : ((stp || {}).version || p.version);
+    var html = '<div class="muted" style="margin:2px 0 8px">' + p.tests.length + " test(s) from protocol " + h(p.protocolNo) + " (source STP " + h(sn) + " · Rev " + h(sver) + (wsPickedStp ? " · selected file" : "") + ") - tick the ones to analyse. Theory loads from the approved STP record when you open a test.</div>" + p.tests.map(function (tid) {
+      var t = SD.testById(tid);
+      var checked = prevChecks.hasOwnProperty(tid) ? prevChecks[tid] : true;
+      return '<label class="check" style="cursor:pointer"><input type="checkbox" data-ws-test="' + h(tid) + '"' + (checked ? " checked" : "") + ' /> <div><div class="c-label">' + h(t.name) + '</div><div class="muted">' + h(t.specification) + "</div></div></label>";
+    }).join("");
+    if (testsEl) testsEl.innerHTML = html;
+    renderWsContext(preselectSampleId);
   }
   function sampleByRef(ref) {
     var s = store.getSample(ref);
@@ -2188,20 +2673,25 @@
   }
 
   function wsLoad() {
-    var pid = document.getElementById("wsStp").value;
-    var p = protocolOf(pid); if (!p) { alert("Select an STP."); return; }
+    var p = wsSelectedProtocol();
+    if (!p) { alert("Select a batch and STP revision."); return; }
+    var stp = wsSelectedStp();
     var checked = Array.prototype.slice.call(document.querySelectorAll("[data-ws-test]")).filter(function (c) { return c.checked; }).map(function (c) { return c.getAttribute("data-ws-test"); });
     if (!checked.length) checked = p.tests.slice();
     var tpEl = document.getElementById("wsTimePoint");
-    wsState = { protocolId: pid, selected: checked, results: {}, raw: {}, sampleId: tpEl ? tpEl.value : "" };
+    wsState = { protocolId: p.id, stpId: stp ? stp.id : "", selected: checked, results: {}, raw: {}, sampleId: tpEl ? tpEl.value : "" };
     renderWsSheet();
   }
 
   function renderWsSheet() {
-    var p = protocolOf(wsState.protocolId), stp = stpFor(wsState.protocolId);
+    var p = protocolOf(wsState.protocolId), stp = stpRecordById(wsState.stpId) || stpFor(wsState.protocolId);
     if (!p) return;
     var sp = sampleByRef(wsState.sampleId);
-    var head = '<div class="ws-head"><div><strong>STP No. ' + h(stp ? stp.stpNumber : stpNoOf(p)) + " · Rev " + h(p.version) + '</strong><div class="muted">' + h(p.product) + " · " + h(p.batches.join(", ")) + " · " + h(p.storageCondition) + (sp ? " · Time point " + h(sp.timePointLabel) : "") + "</div></div></div>";
+    var picked = wsPickedStp && wsPickedStp.protocolId === wsState.protocolId ? wsPickedStp : null;
+    var batchEl = document.getElementById("wsBatch");
+    var head = '<div class="ws-head"><div><strong id="wsHeadStp">STP No. ' + h(picked ? picked.stpNumber : (stp ? stp.stpNumber : stpNoOf(p))) + " - Rev " + h(picked ? picked.version : (stp ? stp.version : p.version)) + (picked ? " (selected file)" : "") + '</strong>' +
+      '<div class="muted">Protocol ' + h(p.protocolNo) + " | " + h(p.product) + " | Batch " + h(sp ? sp.batch : (batchEl ? batchEl.value : p.batches.join(", "))) + " | " + h(p.storageCondition) + "</div>" +
+      '<div class="muted">' + (sp ? "Time point " + h(wsTpLabel(sp)) + " | Condition " + h(wsCondShort(wsCondText(sp))) + " | " + (sp.actualWithdrawal ? "withdrawn " + fmt(sp.actualWithdrawal) : "planned " + fmt(sp.plannedWithdrawal)) + " | Status " + h(wsDocStatus(sp)) : "No time point selected - data entry only (not saved to a time point)") + "</div></div></div>";
     var body = wsState.selected.map(function (tid) {
       var t = SD.testById(tid);
       var rec = ((stp && stp.tests) || []).filter(function (x) { return x.testId === tid; })[0] || {};
@@ -2223,8 +2713,12 @@
       return html + "</div>";
     }).join("");
     document.getElementById("wsSheet").innerHTML = '<div class="worksheet" id="wsPrintable">' + head + body +
+      '<div id="wsSaveNote"></div>' +
+      '<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px">' +
+      '<label class="check" style="cursor:pointer;align-items:flex-start"><input type="checkbox" id="wsComplete"' + (sp && sp.documentationComplete ? " checked" : "") + ' /> <div><div class="c-label">Documentation complete</div><div class="muted">Tick when every result for this time point is entered. Saving marks the status as <strong>Completed</strong>.</div></div></label>' +
+      '<div class="muted" style="font-size:11px;margin-top:6px">Status: <strong id="wsStatusNow">' + h(wsDocStatus(sp)) + "</strong>" + (sp && sp.documentationComplete && sp.documentedAt ? " · completed " + h(sp.documentedAt) + " by " + h(sp.documentedBy || "") : "") + "</div></div>" +
       '<div class="ws-actions" style="margin-top:16px"><button class="btn primary" data-act="ws-calc">Calculate &amp; check specification</button>' + (wsState.sampleId ? ' <button class="btn primary" data-act="ws-save">Save to time point</button>' : "") + ' <button class="btn" data-act="ws-print">Print / PDF worksheet</button></div>' +
-      (wsState.sampleId ? "" : '<p class="muted" style="margin-top:10px">To save results to a time point, open that sample under <strong>Analysis</strong> → Test results.</p>') + "</div>";
+      (wsState.sampleId ? "" : '<p class="muted" style="margin-top:10px">To save results to a time point, select the batch / condition / time point above.</p>') + "</div>";
   }
 
   function wsCalc() {
@@ -2259,10 +2753,13 @@
   }
 
   function wsSave() {
-    var stp = stpFor(wsState.protocolId);
+    var stp = stpRecordById(wsState.stpId) || stpFor(wsState.protocolId);
     var sample = sampleByRef(wsState.sampleId);
-    if (!sample) { alert("Choose a time point first."); return; }
+    if (!sample) { alert("Choose the batch / condition / time point first."); return; }
+    var p = protocolOf(wsState.protocolId);
     var rows = S.results[sample.sampleId] || [];
+    var completeEl = document.getElementById("wsComplete");
+    var markComplete = !!(completeEl && completeEl.checked);
     wsState.selected.forEach(function (tid) {
       var t = SD.testById(tid);
       var rec = ((stp && stp.tests) || []).filter(function (x) { return x.testId === tid; })[0] || {};
@@ -2287,9 +2784,47 @@
     });
     var excelEl = document.getElementById("wsExcel");
     if (excelEl && excelEl.files && excelEl.files[0]) sample.instrumentExcel = excelEl.files[0].name;
+    var picked = wsPickedStp && wsPickedStp.protocolId === wsState.protocolId ? wsPickedStp : null;
+    sample.worksheet = {
+      protocolId: wsState.protocolId,
+      protocolNo: p ? p.protocolNo : "",
+      stpNumber: picked ? picked.stpNumber : (stp ? stp.stpNumber : (p ? stpNoOf(p) : "")),
+      stpVersion: picked ? picked.version : (stp ? stp.version : (p ? p.version : "")),
+      stpSourceFile: picked ? { name: picked.name, size: picked.size, type: picked.type } : null,
+      sampleId: sample.sampleId,
+      timePointLabel: wsTpLabel(sample),
+      condition: wsCondText(sample),
+      savedAt: stamp()
+    };
+    if (markComplete) {
+      sample.documentationComplete = true;
+      sample.documentedAt = stamp();
+      sample.documentedBy = S.currentUser;
+      sample.worksheet.completedAt = sample.documentedAt;
+      if (!sample.analysisCompleteDate) {
+        sample.analysisCompleteDate = today();
+        if (!sample.arNumber) sample.arNumber = SD.ids.next(S, "ar");
+      }
+      store.audit({ user: S.currentUser, action: "complete", entity: "worksheet", entityId: sample.sampleId, note: "Documentation completed at " + wsTpLabel(sample) + " · " + wsCondText(sample) });
+    } else if (sample.documentationComplete) {
+      sample.documentationComplete = false;
+      sample.documentedAt = null;
+      sample.documentedBy = null;
+      store.audit({ user: S.currentUser, action: "reopen", entity: "worksheet", entityId: sample.sampleId, note: "Documentation re-opened for edits" });
+    }
+    store.audit({ user: S.currentUser, action: "update", entity: "worksheet", entityId: sample.sampleId, note: "Results saved against STP " + sample.worksheet.stpNumber + " " + sample.worksheet.stpVersion + " at " + sample.worksheet.timePointLabel + " · " + sample.worksheet.condition + "; protocol/STP files not copied" });
     S.results[sample.sampleId] = rows;
     if (!sample.analysisStart) sample.analysisStart = today();
-    store.save(); closeOverlay(); location.hash = "#/datasheet/" + wsState.protocolId; render();
+    store.save();
+    if (markComplete) {
+      renderWsContext();
+      var statusNow = document.getElementById("wsStatusNow");
+      if (statusNow) statusNow.innerHTML = h(wsDocStatus(sample));
+      var saveNote = document.getElementById("wsSaveNote");
+      if (saveNote) saveNote.innerHTML = '<div class="notice" style="margin-top:10px"><strong>Saved and completed.</strong> ' + h(wsTpLabel(sample) + " · " + wsCondText(sample)) + " is documented against STP " + h(sample.worksheet.stpNumber) + " Rev " + h(sample.worksheet.stpVersion) + ". Status: <strong>Completed</strong>.</div>";
+    } else {
+      closeOverlay(); location.hash = "#/datasheet/" + wsState.protocolId; render();
+    }
   }
 
   function wsPrint() {
@@ -2541,6 +3076,7 @@
     else if (act === "proto-changes") openChangesModal(id);
     else if (act === "ws-new") openWorksheet(null);
     else if (act === "ws-new-stp") openWorksheet(id);
+    else if (act === "ws-new-sample") { var wsSample = sampleByRef(id); if (wsSample) openWorksheet(wsSample.protocolId, wsSample.sampleId); }
     else if (act === "stp-upload") openUploadStp();
     else if (act === "stp-upload-save") stpUploadSave();
     else if (act === "stp-verify") openStpVerify(id);
@@ -2796,6 +3332,12 @@
     else if (act === "ws-calc") wsCalc();
     else if (act === "ws-save") wsSave();
     else if (act === "ws-print") wsPrint();
+    else if (act === "ws-open-both") wsOpenBoth();
+    else if (act === "ws-open-stp") wsOpenStp();
+    else if (act === "ws-view-picked-stp") wsViewPickedStp();
+    else if (act === "ws-pick-stp") wsPickStpFile();
+    else if (act === "ws-open-protocol") wsOpenProtocol();
+    else if (act === "ws-open-source") wsOpenSource();
     else if (act === "proto-changes-save") {
       var cEl = document.getElementById("pcComment");
       var c = cEl ? String(cEl.value).trim() : "";
@@ -2810,7 +3352,79 @@
   }
 
   function onOverlayChange(e) {
-    if (e.target && e.target.id === "wsStp") renderWsTests();
+    if (e.target && e.target.id === "wsBatch") {
+      var wsBatchSelEl = document.getElementById("wsBatch");
+      var wsBatchValue = wsBatchSelEl ? wsBatchSelEl.value : "";
+      var wsBatchEntries0 = wsStpEntries(wsBatchValue);
+      var wsFirstProto = wsBatchEntries0.length ? wsBatchEntries0[0].p : null;
+      var wsProtoSel0 = document.getElementById("wsProtocol");
+      if (wsProtoSel0) {
+        wsProtoSel0.innerHTML = wsProtocolOptions(wsBatchValue, wsFirstProto ? wsFirstProto.id : "");
+        wsProtoSel0.value = wsFirstProto ? wsFirstProto.id : "";
+      }
+      var wsStpSel = document.getElementById("wsStp");
+      if (wsStpSel) {
+        wsStpSel.innerHTML = wsStpOptions(wsBatchValue, wsFirstProto ? wsFirstProto.id : "", null);
+        wsStpSel.value = wsBatchEntries0.length ? wsBatchEntries0[0].sp.id : "";
+      }
+      wsClearPickedStp();
+      renderWsTests(null);
+      var wsSheet0 = document.getElementById("wsSheet");
+      if (wsSheet0) wsSheet0.innerHTML = "";
+    }
+    if (e.target && e.target.id === "wsProtocol") {
+      var wsProtoSel = document.getElementById("wsProtocol");
+      var wsProtoId = wsProtoSel ? wsProtoSel.value : "";
+      var wsBatchSelP = document.getElementById("wsBatch");
+      var wsBatchP = wsBatchSelP ? wsBatchSelP.value : "";
+      var wsProtoEntries = wsStpEntries(wsBatchP).filter(function (x) { return x.p.id === wsProtoId; });
+      var wsStpSelP = document.getElementById("wsStp");
+      if (wsStpSelP) {
+        wsStpSelP.innerHTML = wsStpOptions(wsBatchP, wsProtoId, null);
+        wsStpSelP.value = wsProtoEntries.length ? wsProtoEntries[0].sp.id : "";
+      }
+      wsClearPickedStp();
+      renderWsTests(null);
+      var wsSheetP = document.getElementById("wsSheet");
+      if (wsSheetP) wsSheetP.innerHTML = "";
+    }
+    if (e.target && e.target.id === "wsStp") {
+      var wsBatchSel = document.getElementById("wsBatch");
+      var wsP0 = wsSelectedProtocol();
+      if (wsP0 && wsBatchSel) {
+        var wsBatches = wsP0.batches || [];
+        if (wsBatches.length && wsBatches.indexOf(wsBatchSel.value) < 0) wsBatchSel.value = wsBatches[0];
+      }
+      wsClearPickedStp();
+      renderWsTests(null);
+      var wsSheet1 = document.getElementById("wsSheet");
+      if (wsSheet1) wsSheet1.innerHTML = "";
+    }
+    if (e.target && e.target.id === "wsStpFile") {
+      var wsStpFileEl = document.getElementById("wsStpFile");
+      var pickedFile = wsStpFileEl && wsStpFileEl.files && wsStpFileEl.files[0];
+      if (pickedFile) wsUsePickedStp(pickedFile);
+    }
+    if (e.target && (e.target.id === "wsPickedStpNo" || e.target.id === "wsPickedStpVer")) {
+      if (wsPickedStp) {
+        var pickedNoEl = document.getElementById("wsPickedStpNo");
+        var pickedVerEl = document.getElementById("wsPickedStpVer");
+        if (pickedNoEl && pickedNoEl.value) wsPickedStp.stpNumber = pickedNoEl.value.trim();
+        if (pickedVerEl && pickedVerEl.value) wsPickedStp.version = pickedVerEl.value.trim();
+        renderWsContext();
+        var wsDocBarEl = document.getElementById("wsDocBar");
+        if (wsDocBarEl) wsDocBarEl.innerHTML = wsDocBarHTML();
+      }
+    }
+    if (e.target && e.target.id === "wsTimePoint") {
+      renderWsContext();
+      var loadedSheet = document.getElementById("wsSheet");
+      if (loadedSheet && loadedSheet.innerHTML) {
+        wsState.sampleId = e.target.value;
+        renderWsSheet();
+      }
+    }
+    if (e.target && e.target.id === "wsExcel") showWsAttachedFile();
     if (e.target && e.target.id === "stpProto") { var sp0 = protocolOf(e.target.value); if (sp0) { var n = document.getElementById("stpNo"); if (n && !n.value) n.value = stpNoOf(sp0); var pn = document.getElementById("stpProduct"); if (pn && !pn.value) pn.value = sp0.product; } }
     if (e.target && e.target.id === "stpFile") {
       var f = e.target.files && e.target.files[0];
@@ -2839,6 +3453,21 @@
   overlay.addEventListener("click", onOverlayClick);
   overlay.addEventListener("change", onOverlayChange);
   overlay.addEventListener("input", function (e) { if (e.target && e.target.id === "epReqDate") recomputeEp(); });
+  var docOverlayEl = document.getElementById("docOverlay");
+  if (docOverlayEl && docOverlayEl.addEventListener) {
+    docOverlayEl.addEventListener("click", function (e) {
+      var btn = e.target && e.target.closest ? e.target.closest("[data-act]") : null;
+      if (btn && btn.getAttribute("data-act") === "doc-back") closeDocOverlay();
+    });
+  }
+  if (document.addEventListener) {
+    document.addEventListener("keydown", function (e) {
+      if (e && e.key === "Escape") {
+        var dr = document.getElementById("docOverlay");
+        if (dr && dr.style && dr.style.display !== "none") closeDocOverlay();
+      }
+    });
+  }
   window.addEventListener("hashchange", render);
 
   function setBackend(text, ok) {
@@ -2876,5 +3505,8 @@
     setBackend("Local storage (Supabase not configured)", false);
   }
 
+  if (typeof location !== "undefined" && /[?&]embed=1(&|$)/.test(String(location.search || ""))) {
+    document.body.classList.add("embed");
+  }
   render();
 })();

@@ -123,6 +123,7 @@ goto("#/documentation", "Auto-generated from record data");
 goto("#/final-reports", "Blocked until complete");
 goto("#/stp", "STP No.");
 goto("#/stdoc/p0", "STANDARD TEST PROCEDURE");
+goto("#/review/p1/s1", "Read-only review view");
 goto("#/users", "Signed-in role");
 goto("#/protocols", "AL-009-04");
 goto("#/project/p0", "Lifecycle");
@@ -241,11 +242,42 @@ if (rsS && rsP && rsP.tests.length > 1) {
   else console.log("  Test Results: " + rsP.tests.length + " protocol tests, unticked one not saved (" + savedRows.length + " saved)");
 }
 
-/* STP worksheet: theory loads, analyst enters weights, system prints PASS/FAIL */
-console.log("\nWorksheet: select STP -> select tests -> enter data -> PASS/FAIL");
+/* STP worksheet: batch -> STP revision -> condition/time point, theory loads, PASS/FAIL */
+console.log("\nWorksheet: batch -> STP revision -> condition/time point -> enter data -> PASS/FAIL");
 click(viewClick, { "data-act": "ws-new" });
-document.getElementById("wsStp").value = "p0";
+var wsOpenHtml = ids["overlayRoot"].innerHTML || "";
+if ((ids["wsContext"].innerHTML || "").indexOf("Time point / condition") < 0) failures.push("worksheet trace has no time point / condition selector");
+if (wsOpenHtml.indexOf("Batch No.") < 0) failures.push("worksheet has no batch selector");
+if (wsOpenHtml.indexOf('id="wsStp"') < 0 || wsOpenHtml.indexOf(" | Rev ") < 0) failures.push("worksheet has no revision-aware STP source");
+if (wsOpenHtml.indexOf('id="wsProtocol"') < 0) failures.push("worksheet has no optional protocol selector");
+else if (!document.getElementById("wsProtocol").value) failures.push("protocol was not auto-filled from the batch");
+else console.log("  protocol auto-filled from batch (optional override present)");
+if ((ids["wsDocBar"].innerHTML || "").indexOf("Selected pair") < 0) failures.push("worksheet doc bar does not show the selected STP + protocol pair");
+if ((ids["wsDocBar"].innerHTML || "").indexOf("Open protocol + STP") < 0) failures.push("worksheet has no read-only protocol + STP action");
+if (wsOpenHtml.indexOf('id="wsStpFile"') < 0) failures.push("worksheet has no local STP file picker");
+var wsBatchList = wsOpenHtml;
+if (wsBatchList.indexOf("ATV10-2501") < 0 || wsBatchList.indexOf("ATV10-2502") < 0) failures.push("worksheet batch list is missing the ATV batches");
+else console.log("  worksheet batch list carries ATV10-2501 and ATV10-2502");
+document.getElementById("wsStpFile").files = [{ name: "HK-ITB-STP-001_Rev02.pdf", size: 4096, type: "application/pdf" }];
+change(ids["overlayRoot"]._h.change[0], "wsStpFile");
+var pickedCtx = ids["wsContext"].innerHTML || "";
+if (pickedCtx.indexOf("HK-ITB-STP-001") < 0 || pickedCtx.indexOf("Rev 02") < 0) failures.push("picked STP file did not update the protocol + STP pair");
+else console.log("  picked STP file -> pair updated to HK-ITB-STP-001 · Rev 02");
+if ((ids["wsDocBar"].innerHTML || "").indexOf("Rev 02") < 0) failures.push("picked STP file did not update the document bar pair");
+document.getElementById("wsBatch").value = "ATV10-2501";
+change(ids["overlayRoot"]._h.change[0], "wsBatch");
+var wsBatchHtml = ids["wsContext"].innerHTML || "";
+if (wsBatchHtml.indexOf("Condition:") < 0) failures.push("worksheet time points are not grouped by condition");
+if (wsBatchHtml.indexOf("3M · 25°C / 60% RH") < 0) failures.push("worksheet time points do not show month + condition");
+else console.log("  worksheet time points show month + condition (3M · 25°C / 60% RH), no sample ID");
+document.getElementById("wsProtocol").value = "p0";
+change(ids["overlayRoot"]._h.change[0], "wsProtocol");
 click(overlayClick, { "data-act": "ws-load" });
+var wsContextHtml = ids["wsContext"].innerHTML || "";
+if (wsContextHtml.indexOf("Time point / condition") < 0) failures.push("worksheet trace has no time point / condition row");
+if (wsContextHtml.indexOf("Status") < 0) failures.push("worksheet trace has no status row");
+if (wsContextHtml.indexOf(">SMP-") >= 0) failures.push("worksheet trace still exposes a sample ID");
+if (!document.getElementById("wsComplete")) failures.push("worksheet has no documentation-complete option at the end");
 document.getElementById("ws_in_tfd_assay_sampleArea").value = "100000";
 document.getElementById("ws_in_tfd_assay_stdArea").value = "100200";
 document.getElementById("ws_in_tfd_water_result").value = "5.5";
@@ -259,18 +291,31 @@ console.log("  assay 100000/100200*100 -> " + (sheet.indexOf("99.8") >= 0 ? "99.
 if (sheet.indexOf("Method / theory") < 0) failures.push("theory not loaded from STP");
 
 /* Save worksheet results to a time point -> cumulative data sheet fills */
-console.log("\nData sheet: enter 6M assay -> save to time point");
+console.log("\nData sheet: enter 6M assay -> save to time point -> documentation completed");
 click(viewClick, { "data-act": "ws-new" });
-document.getElementById("wsStp").value = "panz";
+document.getElementById("wsProtocol").value = "panz";
+change(ids["overlayRoot"]._h.change[0], "wsProtocol");
 document.getElementById("wsTimePoint").value = "ANZ-0005";
 click(overlayClick, { "data-act": "ws-load" });
+if (!document.getElementById("wsComplete")) failures.push("worksheet has no documentation-complete checkbox");
 document.getElementById("ws_in_anz_assay_sampleArea").value = "100000";
 document.getElementById("ws_in_anz_assay_stdArea").value = "100500";
 click(overlayClick, { "data-act": "ws-calc" });
+document.getElementById("wsComplete").checked = true;
 click(overlayClick, { "data-act": "ws-save" });
 var r6 = (S.results["ANZ-0005"] || []).filter(function (x) { return x.testId === "anz_assay"; })[0];
 if (!r6 || !r6.result) failures.push("worksheet did not save result to time point");
+var wsSampleRec = S.samples.filter(function (x) { return x.sampleId === "ANZ-0005"; })[0];
+if (!wsSampleRec || !wsSampleRec.worksheet || wsSampleRec.worksheet.stpNumber !== "AL-009-04") failures.push("worksheet did not store its STP reference on the sample");
+else if (JSON.stringify(wsSampleRec.worksheet).indexOf("data:") >= 0) failures.push("worksheet stored file content instead of a reference");
+else console.log("  worksheet saved data against STP " + wsSampleRec.worksheet.stpNumber + " (reference only, no file copied)");
+if (wsSampleRec && wsSampleRec.worksheet && wsSampleRec.worksheet.timePointLabel !== "6M") failures.push("worksheet did not save the month label on the sample reference");
+if (!wsSampleRec || !wsSampleRec.documentationComplete) failures.push("documentation-complete did not set the completed status");
+else console.log("  documentation complete -> status Completed, time point " + wsSampleRec.worksheet.timePointLabel + " · " + wsSampleRec.worksheet.condition);
+if ((ids["wsSaveNote"].innerHTML || "").indexOf("Completed") < 0) failures.push("worksheet did not confirm the completed status after save");
+else if ((ids["wsStatusNow"].innerHTML || "").indexOf("Completed") < 0) failures.push("worksheet status was not updated to Completed");
 console.log("  6M assay saved = " + (r6 && r6.result) + " (" + (r6 && r6.status) + ")");
+goto("#/datasheet/panz", "Cumulative data sheet");
 var ds = ids["view"].innerHTML || "";
 if (ds.indexOf("100000") >= 0 && ds.indexOf("102.0") >= 0) console.log("  data sheet rendered after save");
 if (ds.indexOf("Cumulative data sheet") < 0) failures.push("data sheet did not render after save");

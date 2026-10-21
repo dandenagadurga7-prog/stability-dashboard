@@ -22,7 +22,7 @@ http.createServer(function (req, res) {
       url: env.NEXT_PUBLIC_SUPABASE_URL || "",
       key: env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || ""
     }) + ";";
-    res.writeHead(200, { "Content-Type": "application/javascript" });
+    res.writeHead(200, { "Content-Type": "application/javascript", "Cache-Control": "no-store, max-age=0" });
     res.end(body);
     return;
   }
@@ -30,7 +30,7 @@ http.createServer(function (req, res) {
   if (file.indexOf(root) !== 0) { res.writeHead(403); res.end("forbidden"); return; }
   fs.readFile(file, function (err, data) {
     if (err) { res.writeHead(404, { "Content-Type": "text/plain" }); res.end("404 not found"); return; }
-    res.writeHead(200, { "Content-Type": types[path.extname(file)] || "text/plain" });
+    res.writeHead(200, { "Content-Type": types[path.extname(file)] || "text/plain", "Cache-Control": "no-store, max-age=0" });
     res.end(data);
   });
 }).listen(port, function () { console.log("stability dashboard listening on http://localhost:" + port); });
