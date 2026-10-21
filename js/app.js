@@ -905,25 +905,21 @@
       var sp = stpFor(p.id);
       var stpNo = (sp && sp.stpNumber) || stpNoOf(p);
       var status = sp ? (sp.status || "Draft") : "Draft";
-      var acts = '<button class="btn small" data-act="protocol-open" data-id="' + p.id + '">Methods</button> <a class="btn small" href="#/stdoc/' + p.id + '">Document</a> <a class="btn small" href="#/review/' + p.id + '">Review</a>';
-      if (status === "Approved") acts += ' <button class="btn small primary" data-act="ws-new-stp" data-id="' + p.id + '">Worksheet</button>';
-      else acts += ' <button class="btn small" data-act="stp-verify" data-id="' + p.id + '">Verify text</button>';
-      if (status !== "Approved" && STP_APPROVE_ROLES.indexOf(S.role) >= 0) acts += ' <button class="btn small primary" data-act="stp-approve" data-id="' + p.id + '">Approve</button> <button class="btn small danger" data-act="stp-reject" data-id="' + p.id + '">Reject</button>';
+      var acts = '<button class="btn small" data-act="protocol-open" data-id="' + p.id + '">Methods</button> <a class="btn small" href="#/stdoc/' + p.id + '">Document</a> <a class="btn small" href="#/review/' + p.id + '">Review</a> <button class="btn small primary" data-act="ws-new-stp" data-id="' + p.id + '">Worksheet</button>';
       return "<tr><td><strong>" + h(stpNo) + "</strong></td><td>" + h(sp ? sp.version : p.version) + "</td><td>" + h(fmt(sp ? sp.effectiveDate : p.effectiveDate)) + '</td><td class="wrap">' + h(p.product) + '</td><td class="num">' + (sp ? (sp.tests || []).length : p.tests.length) + "</td><td>" + stpStatusBadge(status) + '</td><td class="wrap">' + h(stpSourceText(sp)) + "</td><td>" + acts + "</td></tr>";
     }
     var rows = S.protocols.map(rowFor).join("");
     var extra = (S.stps || []).filter(function (sp) {
       return sp && !S.protocols.some(function (p) { return p.id === sp.id || stpNoOf(p) === sp.stpNumber; });
     }).map(function (sp) {
-      var acts = '<a class="btn small" href="#/stdoc/' + h(sp.id) + '">Document</a> <button class="btn small" data-act="stp-verify" data-id="' + h(sp.id) + '">Verify text</button>';
-      if (sp.status !== "Approved" && STP_APPROVE_ROLES.indexOf(S.role) >= 0) acts += ' <button class="btn small primary" data-act="stp-approve" data-id="' + h(sp.id) + '">Approve</button>';
+      var acts = '<a class="btn small" href="#/stdoc/' + h(sp.id) + '">Document</a>';
       return "<tr><td><strong>" + h(sp.stpNumber) + "</strong></td><td>" + h(sp.version) + "</td><td>" + h(fmt(sp.effectiveDate)) + '</td><td class="wrap">' + h(sp.product || "—") + '</td><td class="num">' + ((sp.tests || []).length) + "</td><td>" + stpStatusBadge(sp.status) + '</td><td class="wrap">' + h(stpSourceText(sp)) + "</td><td>" + acts + "</td></tr>";
     }).join("");
     var canUp = STP_UPLOAD_ROLES.indexOf(S.role) >= 0;
     return '<div class="toolbar"><div class="grow"><span class="pill">Signed-in role: ' + h(S.role) + "</span></div>" +
       (canUp ? '<button class="btn primary" data-act="stp-upload">+ Upload STP (PDF / DOCX)</button> ' : "") +
       '<button class="btn primary" data-act="ws-new">+ New analysis worksheet (STP)</button></div>' +
-      '<div class="notice"><strong>Controlled source.</strong> Analyses use only an <strong>Approved</strong> STP version; the analyst cannot edit method text, only enter actual lab data, and every worksheet keeps the exact STP version used. Upload → reviewer verifies the text → authorized role approves.</div>' +
+      '<div class="notice"><strong>Current STP.</strong> Upload the current STP for a product; the latest uploaded version is used for worksheets and the analyst cannot edit method text, only enter actual lab data. Version history is kept. No separate approval step.</div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>STP No.</th><th>Version</th><th>Effective</th><th>Product</th><th>Tests</th><th>Status</th><th>Source file</th><th></th></tr></thead><tbody>' + rows + extra + "</tbody></table></div></div>";
   };
 
@@ -943,9 +939,9 @@
       '<label class="fld" style="margin-top:10px">Version</label><input class="input" id="stpVersion" value="V1.0" />' +
       '<label class="fld" style="margin-top:10px">Effective date</label><input class="input" type="date" id="stpEff" value="' + today() + '" />' +
       '<label class="fld" style="margin-top:10px">STP file (PDF / DOCX / TXT)</label><input class="input" type="file" id="stpFile" accept=".pdf,.docx,.doc,.txt" />' +
-      '<label class="fld" style="margin-top:10px">STP text / instructions (auto-filled for TXT; paste for PDF/DOCX until OCR is configured)</label><textarea class="input" id="stpText" rows="6" placeholder="Paste the approved method text here; a reviewer verifies it before approval."></textarea>' +
-      '<p class="muted" style="margin-top:8px">The file is uploaded to Supabase Storage when a bucket is configured; otherwise the file name/size and the verified text are stored. Nothing is usable until a reviewer verifies the text and an authorized role approves it.</p>' +
-      '<div style="margin-top:14px"><button class="btn primary" data-act="stp-upload-save">Save as Draft</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
+      '<label class="fld" style="margin-top:10px">STP text / instructions (auto-filled for TXT; paste for PDF/DOCX until OCR is configured)</label><textarea class="input" id="stpText" rows="6" placeholder="Paste the current method text here; it is used for the worksheet."></textarea>' +
+      '<p class="muted" style="margin-top:8px">The file is uploaded to Supabase Storage when a bucket is configured; otherwise the file name/size and the text are stored. The uploaded STP becomes the current STP and is used for worksheets; earlier versions are kept in history.</p>' +
+      '<div style="margin-top:14px"><button class="btn primary" data-act="stp-upload-save">Save current STP</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
       "</div>");
   }
 
@@ -962,7 +958,7 @@
     var text = (((document.getElementById("stpText") || {}).value) || "").trim();
     var rec = {
       id: p ? p.id : ("stp_" + Date.now()),
-      stpNumber: stpNo, version: version, effectiveDate: eff, status: "Draft",
+      stpNumber: stpNo, version: version, effectiveDate: eff, status: "Approved",
       product: (((document.getElementById("stpProduct") || {}).value) || "").trim() || (p ? p.product : ""),
       productCode: (((document.getElementById("stpCode") || {}).value) || "").trim(),
       auto: false, text: text,
@@ -2325,7 +2321,7 @@
   function wsUsableProtocols() {
     return S.protocols.filter(function (p) {
       var sp = stpFor(p.id);
-      return !!sp && (sp.status || "Draft") === "Approved";
+      return !!sp && (sp.status || "Draft") !== "Rejected";
     });
   }
   function wsBatchEntries() {
@@ -2350,7 +2346,7 @@
     var out = [], seen = {};
     (S.stps || []).forEach(function (sp) {
       if (seen[sp.id]) return;
-      if ((sp.status || "Draft") !== "Approved") return;
+      if ((sp.status || "Draft") === "Rejected") return;
       var p = protocolForStp(sp);
       if (!p || !wsBatchInProtocol(p, batch)) return;
       seen[sp.id] = 1;
@@ -2360,7 +2356,7 @@
       if (!wsBatchInProtocol(p, batch)) return;
       if (out.some(function (e) { return e.p.id === p.id; })) return;
       var built = stpFor(p.id);
-      if (built && (built.status || "Draft") === "Approved" && !seen[built.id]) { seen[built.id] = 1; out.push({ sp: built, p: p }); }
+      if (built && (built.status || "Draft") !== "Rejected" && !seen[built.id]) { seen[built.id] = 1; out.push({ sp: built, p: p }); }
     });
     out.sort(function (a, b) {
       var n = String(a.sp.stpNumber || "").localeCompare(String(b.sp.stpNumber || ""));

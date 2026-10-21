@@ -519,8 +519,8 @@ var wstep = SD.lifecycle.checklist(S, npid).filter(function (x) { return x.key =
 if (!wstep || !wstep.done) failures.push("withdrawal step did not tick after all due samples withdrawn (" + (wstep ? wstep.detail : "?") + ")");
 else console.log("  withdrawal step ticked after all due samples withdrawn (" + wstep.detail + ")");
 
-/* STP register: upload -> verify -> approve (authorized role), versioned */
-console.log("\nSTP register: upload -> verify -> approve");
+/* STP register: upload the current STP (no approval step), versioned */
+console.log("\nSTP register: upload current STP");
 var prevRole = S.role;
 S.role = "Admin";
 click(viewClick, { "data-act": "stp-upload" });
@@ -530,22 +530,8 @@ document.getElementById("stpText").value = "Assay method text";
 click(overlayClick, { "data-act": "stp-upload-save" });
 var newStp = S.stps.filter(function (x) { return x.stpNumber === "TEST-STP/9"; })[0];
 if (!newStp) failures.push("STP upload did not create a record");
-else if (newStp.status !== "Draft") failures.push("uploaded STP is not Draft: " + newStp.status);
-else console.log("  uploaded as Draft -> " + newStp.stpNumber);
-if (newStp) {
-  click(viewClick, { "data-act": "stp-verify", "data-id": newStp.id });
-  document.getElementById("stpVerifyText").value = "Assay method text verified";
-  click(overlayClick, { "data-act": "stp-verify-save", "data-id": newStp.id });
-  if (newStp.status !== "Verified") failures.push("STP not Verified: " + newStp.status);
-  else console.log("  reviewer verified the text");
-  click(viewClick, { "data-act": "stp-approve", "data-id": newStp.id });
-  if (newStp.status !== "Approved") failures.push("STP not Approved: " + newStp.status);
-  else console.log("  authorized role approved it -> Approved");
-  S.role = "Analyst";
-  click(viewClick, { "data-act": "stp-approve", "data-id": newStp.id });
-  if (newStp.status !== "Approved") failures.push("an analyst was able to change an approved STP");
-  else console.log("  analyst cannot change an approved STP");
-}
+else if (newStp.status !== "Approved") failures.push("uploaded STP is not current/Approved: " + newStp.status);
+else console.log("  uploaded current STP -> " + newStp.stpNumber + " (" + newStp.status + ")");
 S.role = prevRole;
 
 function finish() {
