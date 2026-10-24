@@ -476,6 +476,10 @@ else {
   if (pkHtml.indexOf("Condition 1") < 0 || pkHtml.indexOf("Condition 2") < 0) failures.push("packing drawer did not show all conditions");
   else console.log("  packing drawer shows all " + crp.protocolMeta.sampleConditions.length + " conditions");
   click(overlayClick, { "data-act": "pack-save", "data-id": crp.id });
+  var crj0 = SD.lifecycle.project(S, crp.id);
+  if (!crj0.ers || crj0.ers.length !== 3) failures.push("expected 3 ER numbers (one per condition), got " + (crj0.ers ? crj0.ers.length : 0));
+  else if (crj0.ers.map(function (e) { return e.erNumber; }).filter(function (v, i, a) { return a.indexOf(v) === i; }).length !== 3) failures.push("per-condition ER numbers are not unique");
+  else console.log("  per-condition ER numbers -> " + crj0.ers.map(function (e) { return e.erNumber; }).join(", "));
   click(viewClick, { "data-act": "load-open", "data-id": crp.id });
   var lHtml = ids["overlayRoot"].innerHTML;
   var lConds = (lHtml.match(/Condition \d+: /g) || []).length;
@@ -488,6 +492,8 @@ else {
   var gen2 = SD.lifecycle.samplesFor(S, crp.id);
   if (gen2.length !== 12) failures.push("loading schedule wrong: expected 12 (3 conditions x 4 time points), got " + gen2.length);
   else console.log("  loading created " + gen2.length + " samples across 3 conditions");
+  if (!gen2.length || !gen2.every(function (s) { return !!s.erNumber; })) failures.push("samples are missing the per-condition ER number");
+  else console.log("  every sample carries its condition's ER number");
   goto("#/loading", "CR Drug");
   var crRows = (view.innerHTML.match(/CR Drug/g) || []).length;
   if (crRows < 3) failures.push("chamber loading list shows only " + crRows + " row(s) for 3 conditions");

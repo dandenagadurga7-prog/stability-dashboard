@@ -858,11 +858,19 @@
   VIEWS.er = function () {
     var rows = S.protocols.filter(function (p) { return sMatch([p.protocolNo, p.product, p.productCode, (p.batches || []).join(" ")]); }).map(function (p) {
       var pr = projectOf(p.id);
-      var er = pr.er ? '<strong>' + h(pr.er.erNumber) + "</strong>" : '<span class="muted">Not generated</span>';
-      var action = pr.er ? '<a class="btn small" href="#/project/' + p.id + '">Trace</a>' : (pr.packing ? '<button class="btn small primary" data-act="er-generate" data-id="' + p.id + '">Generate ER</button>' : '<span class="muted">Pack first</span>');
-      return "<tr><td>" + er + "</td><td>" + h(p.protocolNo) + '</td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + "</td><td>" + (pr.loading ? h((pr.loading.conditions || [pr.loading]).map(function (c) { return c.chamberName; }).join(", ")) : "—") + "</td><td>" + (pr.loading ? h(protocolConditions(p)) : "—") + "</td><td>" + action + "</td></tr>";
+      var ers = (pr.ers && pr.ers.length) ? pr.ers : (pr.er ? [pr.er] : []);
+      if (!ers.length) {
+        var act0 = pr.packing ? '<button class="btn small primary" data-act="er-generate" data-id="' + p.id + '">Generate ER</button>' : '<span class="muted">Pack first</span>';
+        return "<tr><td><span class=\"muted\">Not generated</span></td><td>" + h(p.protocolNo) + '</td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + "</td><td>—</td><td>—</td><td>" + act0 + "</td></tr>";
+      }
+      return ers.map(function (e) {
+        var cond = e.condition || protocolConditions(p);
+        var lc = ((pr.loading && pr.loading.conditions) || []).filter(function (c) { return c.condition === cond; })[0];
+        var chamber = lc ? lc.chamberName : (pr.loading ? (pr.loading.chamberName || "—") : "—");
+        return "<tr><td><strong>" + h(e.erNumber) + "</strong></td><td>" + h(p.protocolNo) + '</td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + "</td><td>" + h(chamber) + "</td><td>" + h(cond) + '</td><td><a class="btn small" href="#/project/' + p.id + '">Trace</a></td></tr>';
+      }).join("");
     }).join("");
-    return searchBar() + '<div class="notice"><strong>ER = traceability reference.</strong> The ER number links protocol → product → batch → packing → chamber → time point → withdrawal → analysis → final report. Generate it once; every later stage reuses it.</div>' +
+    return searchBar() + '<div class="notice"><strong>ER = traceability reference.</strong> Each storage condition gets its own ER number, so every condition is tracked separately through packing → chamber → withdrawal → analysis → final report.</div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>ER Number</th><th>Protocol</th><th>Product</th><th>Batch</th><th>Chamber</th><th>Condition</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
   };
 
@@ -901,7 +909,7 @@
     var open = S.samples.filter(function (s) { return !s.actualWithdrawal; }).filter(function (s) { return sMatch([s.product, s.productCode, s.batch, s.protocolNo, s.sampleId, s.timePointLabel]); }).sort(function (a, b) { return (a.plannedWithdrawal || "").localeCompare(b.plannedWithdrawal || ""); });
     var rows = open.length ? open.map(function (s) {
       var d = computeDatesFor(s), st = statusOf(s), pr = projectOf(s.protocolId);
-      return "<tr><td>" + (pr.er ? h(pr.er.erNumber) : "—") + '</td><td class="wrap">' + h(s.product) + "</td><td>" + h(s.batch) + "</td><td>" + h(s.storageCondition) + "</td><td>" + h(s.timePointLabel) + "</td>" +
+      return "<tr><td>" + (s.erNumber ? h(s.erNumber) : (pr.er ? h(pr.er.erNumber) : "—")) + '</td><td class="wrap">' + h(s.product) + "</td><td>" + h(s.batch) + "</td><td>" + h(s.storageCondition) + "</td><td>" + h(s.timePointLabel) + "</td>" +
         "<td>" + fmt(s.plannedWithdrawal) + "</td>" +
         "<td>" + fmt(d.earliestWithdrawal) + " → " + fmt(d.latestWithdrawal) + "</td>" +
         "<td>" + statusBadge(st.def) + "</td>" +
@@ -1201,7 +1209,7 @@
       "<dt>Product Code</dt><dd>" + h(p.productCode) + "</dd>" +
       "<dt>Batch(es)</dt><dd>" + h(p.batches.join(", ")) + "</dd>" +
       "<dt>Protocol Status</dt><dd>" + protoBadge(ps) + "</dd>" +
-      "<dt>ER Number</dt><dd>" + (pr.er ? h(pr.er.erNumber) : "—") + "</dd>" +
+      "<dt>ER Number</dt><dd>" + ((pr.ers && pr.ers.length) ? h(pr.ers.map(function (e) { return e.erNumber + " (" + e.condition + ")"; }).join("; ")) : (pr.er ? h(pr.er.erNumber) : "—")) + "</dd>" +
       "<dt>Chamber</dt><dd>" + (pr.loading ? h(loadingChamberText(pr.loading)) : "—") + "</dd>" +
       "</dl></div></div>" +
       '<div class="card"><div class="card-h"><h3>Lifecycle</h3><span class="hint">' + doneCount + "/" + steps.length + " steps</span></div><div class=\"card-b\">" +
@@ -1704,6 +1712,14 @@
     return (p.timePoints && p.timePoints.length) ? p.timePoints : [1, 2, 3, 6, 9, 12];
   }
 
+  /* ER number for one condition (one ER per condition when packing created them). */
+  function erForCondition(p, cond) {
+    var pr = projectOf(p.id);
+    var ers = (pr && pr.ers) || (pr && pr.er ? [pr.er] : []);
+    var hit = ers.filter(function (e) { return e.condition === cond; })[0];
+    return hit ? hit.erNumber : (ers[0] ? ers[0].erNumber : "");
+  }
+
   function addScheduleConditions(p, loading, conds) {
     var n = S.samples.length, total = 0;
     conds.forEach(function (lc, ci) {
@@ -1712,6 +1728,7 @@
       S.samples.push({
         id: "g" + Date.now() + "_" + ci + "i", sampleId: initialId, protocolId: p.id, protocolNo: p.protocolNo,
         product: p.product, productCode: p.productCode, batch: p.batches[0], storageCondition: lc.condition, condition: lc.condition, pack: p.pack,
+        erNumber: erForCondition(p, lc.condition),
         timePointMonths: 0, timePointLabel: "Initial", manufacturingDate: null, expiryDate: null,
         plannedWithdrawal: base, actualWithdrawal: base, analysisStart: base, analysisCompleteDate: base,
         analyst: S.currentUser, reviewer: S.users[10] ? S.users[10].name : "Reviewer", reviewStatus: "approved", reportStatus: "approved", hold: false, holdReason: "", remarks: "Initial, generated at loading"
@@ -1723,6 +1740,7 @@
         S.samples.push({
           id: "g" + Date.now() + "_" + ci + "_" + i, sampleId: sid, protocolId: p.id, protocolNo: p.protocolNo,
           product: p.product, productCode: p.productCode, batch: p.batches[0], storageCondition: lc.condition, condition: lc.condition, pack: p.pack,
+          erNumber: erForCondition(p, lc.condition),
           timePointMonths: tp, timePointLabel: tp + "M", manufacturingDate: null, expiryDate: null,
           plannedWithdrawal: dates.addMonths(base, tp), actualWithdrawal: null, analysisStart: null, analysisCompleteDate: null,
           analyst: "", reviewer: "", reviewStatus: "not_started", reportStatus: "not_started", hold: false, holdReason: "", remarks: "Generated from loading " + loading.loadingId
@@ -3305,8 +3323,12 @@
         conditions: pkRecords
       };
       store.audit({ user: S.currentUser, action: "create", entity: "packing", entityId: pk.protocolNo, field: "packingId", oldValue: null, newValue: pkr.packing.packingId, note: "Sample packed (" + pkRecords.length + " condition(s))" });
-      pkr.er = { erNumber: SD.ids.next(S, "er"), generatedAt: stamp() };
-      store.audit({ user: S.currentUser, action: "generate", entity: "er", entityId: pkr.er.erNumber, note: "Auto-generated from packing " + pkr.packing.packingId });
+      /* one ER number per condition so each condition can be tracked on its own */
+      pkr.ers = pkRecords.map(function (r) {
+        return { erNumber: SD.ids.next(S, "er"), condition: r.condition, packingId: pkr.packing.packingId, generatedAt: stamp() };
+      });
+      pkr.er = pkr.ers[0];
+      store.audit({ user: S.currentUser, action: "generate", entity: "er", entityId: pkr.ers.map(function (x) { return x.erNumber; }).join(", "), note: pkr.ers.length + " ER number(s) generated (one per condition) from packing " + pkr.packing.packingId });
       store.save(); closeOverlay(); render();
     } else if (act === "load-save") {
       var lp = protocolOf(id), lpr = projectOf(id);
