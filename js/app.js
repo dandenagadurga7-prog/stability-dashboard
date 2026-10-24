@@ -2598,10 +2598,14 @@
     return '<div class="ws-context-item"><span class="eyebrow">' + h(label) + '</span><strong>' + h(value) + "</strong></div>";
   }
   function wsContextHTML(preselectSampleId) {
-    var p = wsSelectedProtocol(), sp = wsSelectedStp();
-    if (!p) return '<div class="notice info">Select a batch to see its protocol, STP and time points.</div>';
     var batchEl = document.getElementById("wsBatch");
     var batch = batchEl ? batchEl.value : "";
+    var owner = wsBatchEntries().filter(function (e) { return e.batch === batch; })[0];
+    var p = wsSelectedProtocol(), sp = wsSelectedStp();
+    /* the context must always describe the batch that is selected */
+    if (owner && (!p || p.id !== owner.pid)) p = protocolOf(owner.pid) || p;
+    if (p && (!sp || sp.stpNumber !== stpNoOf(p))) sp = stpFor(p.id) || sp;
+    if (!p) return '<div class="notice info">Select a batch to see its protocol, STP and time points.</div>';
     var samples = wsBatchSamples(batch, p.id);
     var tpEl = document.getElementById("wsTimePoint");
     var want = preselectSampleId || (tpEl ? tpEl.value : "");
@@ -2622,7 +2626,12 @@
       (s ? "" : '<div class="notice info" style="margin-top:8px">No scheduled time point for this batch yet. You can still review the method, but results can only be saved to a scheduled batch / condition / time point.</div>');
   }
   function wsDocBarHTML() {
+    var batchEl = document.getElementById("wsBatch");
+    var batch = batchEl ? batchEl.value : "";
+    var owner = wsBatchEntries().filter(function (e) { return e.batch === batch; })[0];
     var p = wsSelectedProtocol(), sp = wsSelectedStp();
+    if (owner && (!p || p.id !== owner.pid)) p = protocolOf(owner.pid) || p;
+    if (p && (!sp || sp.stpNumber !== stpNoOf(p))) sp = stpFor(p.id) || sp;
     var stpPart = wsPickedStp ? wsPickedStpLabel() : (sp ? sp.stpNumber + " · Rev " + (sp.version || "—") : (p ? stpNoOf(p) : ""));
     var pair = p
       ? stpPart + " + " + p.protocolNo + (p.version ? " · " + p.version : "")
@@ -3506,6 +3515,10 @@
       var wsBatchValue = wsBatchSelEl ? wsBatchSelEl.value : "";
       var wsBatchEntries0 = wsStpEntries(wsBatchValue);
       var wsFirstProto = wsBatchEntries0.length ? wsBatchEntries0[0].p : null;
+      if (!wsFirstProto) {
+        var own0 = wsBatchEntries().filter(function (e) { return e.batch === wsBatchValue; })[0];
+        if (own0) wsFirstProto = protocolOf(own0.pid) || null;
+      }
       var wsProtoSel0 = document.getElementById("wsProtocol");
       if (wsProtoSel0) {
         wsProtoSel0.innerHTML = wsProtocolOptions(wsBatchValue, wsFirstProto ? wsFirstProto.id : "");

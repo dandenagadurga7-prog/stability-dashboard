@@ -262,6 +262,16 @@ else if (!document.getElementById("wsProtocol").value) failures.push("protocol w
 else console.log("  protocol auto-filled from batch (optional override present)");
 if ((ids["wsDocBar"].innerHTML || "").indexOf("Selected pair") < 0) failures.push("worksheet doc bar does not show the selected STP + protocol pair");
 if ((ids["wsDocBar"].innerHTML || "").indexOf("Open protocol + STP") < 0) failures.push("worksheet has no read-only protocol + STP action");
+/* changing the batch must update the context to that batch's own product/protocol */
+var otherB = null;
+for (var bi = 0; bi < S.samples.length; bi++) { if (S.samples[bi].batch !== document.getElementById("wsBatch").value) { otherB = S.samples[bi].batch; break; } }
+if (otherB) {
+  document.getElementById("wsBatch").value = otherB;
+  change(ids["overlayRoot"]._h.change[0], "wsBatch");
+  var ctx2 = ids["wsContext"].innerHTML || "";
+  if (ctx2.indexOf("Batch</span><strong>" + otherB) < 0) failures.push("context did not follow the batch change to " + otherB);
+  else console.log("  context follows batch change -> " + otherB);
+}
 if (wsOpenHtml.indexOf('id="wsStpFile"') < 0) failures.push("worksheet has no local STP file picker");
 var wsBatchList = wsOpenHtml;
 if (wsBatchList.indexOf("ATV10-2501") < 0 || wsBatchList.indexOf("ATV10-2502") < 0) failures.push("worksheet batch list is missing the ATV batches");
