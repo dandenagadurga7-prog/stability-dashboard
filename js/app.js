@@ -330,6 +330,12 @@
   function kpi(label, val, note, cls) {
     return '<div class="card kpi ' + (cls || "") + '"><div class="lbl">' + h(label) + '</div><div class="val num">' + val + '</div><div class="note">' + h(note || "") + "</div></div>";
   }
+  function printAs(title) {
+    var prev = (typeof document !== "undefined" && document.title) || "";
+    try { if (title) document.title = title; } catch (e) { /* ignore */ }
+    try { if (typeof window !== "undefined" && window.print) window.print(); } catch (e) { /* ignore */ }
+    setTimeout(function () { try { if (typeof document !== "undefined") document.title = prev; } catch (e) { /* ignore */ } }, 1500);
+  }
   function searchHint() {
     if (!filters.search) return "";
     return '<span class="pill">Search: ' + h(filters.search) + '</span> <button class="btn small" data-act="clear-search">Clear</button>';
@@ -650,7 +656,7 @@
     var s = store.getSample(id);
     if (!s) return notFound();
     return '<div class="toolbar"><button class="btn" data-act="back">← Back</button><div class="grow"></div>' +
-      '<button class="btn" onclick="window.print()">Print / Save PDF</button>' +
+      '<button class="btn" data-act="print-report">Print / Save PDF</button>' +
       (s.reportStatus === "generated" ? '<button class="btn primary" data-act="report-approve" data-id="' + s.id + '">Approve report</button>' : "") +
       (s.reportStatus === "not_started" ? '<button class="btn primary" data-act="report-generate" data-id="' + s.id + '">Generate report</button>' : "") +
       "</div>" + reportHTML(s);
@@ -1130,7 +1136,7 @@
       return '<div class="review-pane"><div class="review-pane-h"><div><strong>' + h(title) + '</strong><div class="muted">' + h(sub) + '</div></div></div>' +
         '<iframe class="review-frame" title="' + h(title) + '" src="' + h(src) + '"></iframe></div>';
     }
-    return '<div class="toolbar"><a class="btn" href="#/analysis">&larr; Analysis</a><div class="grow"></div><span class="pill">Read-only</span> <button class="btn" onclick="window.print()">Print review</button></div>' +
+    return '<div class="toolbar"><a class="btn" href="#/analysis">&larr; Analysis</a><div class="grow"></div><span class="pill">Read-only</span> <button class="btn" data-act="print-review">Print review</button></div>' +
       '<div class="notice info"><strong>Read-only review view.</strong> The protocol and the STP are opened together so the reviewer can check the recorded data against both. These documents are selected as references and are not saved into the worksheet; only the entered data is saved.</div>' +
       '<div class="ws-context">' +
         '<div class="ws-context-item"><span class="eyebrow">Product</span><strong>' + h(p.product) + '</strong></div>' +
@@ -1346,7 +1352,7 @@
     if (ps === "UNDER_REVIEW") reviewBtns = '<button class="btn primary" data-act="proto-review-approve" data-id="' + id + '">Reviewer: approve</button> <button class="btn danger" data-act="proto-changes" data-id="' + id + '">Request changes</button> ';
     else if (ps === "PENDING_GL") reviewBtns = '<button class="btn primary" data-act="proto-gl-approve" data-id="' + id + '">Group Leader: approve</button> <button class="btn danger" data-act="proto-changes" data-id="' + id + '">Request changes</button> ';
     else if (ps === "CHANGES_REQUESTED") reviewBtns = '<button class="btn primary" data-act="proto-edit" data-id="' + id + '">Edit protocol &amp; resubmit</button> ';
-    return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><a class="btn" href="#/review/' + id + '">Protocol + STP review</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> ' + reviewBtns + '<button class="btn" onclick="window.print()">Print / PDF</button></div>' +
+    return '<div class="toolbar"><a class="btn" href="#/project/' + id + '">← Project 360</a><a class="btn" href="#/review/' + id + '">Protocol + STP review</a><div class="grow"></div><span class="eyebrow" style="align-self:center">' + protoBadge(ps) + '</span> ' + reviewBtns + '<button class="btn" data-act="print-protocol">Print / PDF</button></div>' +
       '<div class="report-preview">' +
       '<div class="rp-head"><div><h2 style="text-align:left">HETERO (R&amp;D)<br><small style="font-weight:400;font-size:11px;color:var(--muted)">KAZIPALLY</small></h2><div style="color:var(--muted);font-size:11px">STABILITY PROTOCOL</div></div>' +
       '<div style="text-align:right"><strong style="border:1px solid var(--line-strong);padding:4px 8px;border-radius:4px;font-family:var(--serif)">HETERO</strong></div></div>' +
@@ -3178,7 +3184,10 @@
     else if (act === "ws-new-sample") { var wsSample = sampleByRef(id); if (wsSample) openWorksheet(wsSample.protocolId, wsSample.sampleId); }
     else if (act === "stp-upload") openUploadStp();
     else if (act === "stp-upload-save") stpUploadSave();
-    else if (act === "doc-print") { try { if (typeof window !== "undefined" && window.print) window.print(); } catch (e) { /* ignore */ } }
+    else if (act === "doc-print") printAs("Standard Test Procedure");
+    else if (act === "print-protocol") printAs("Stability Protocol");
+    else if (act === "print-review") printAs("Protocol + STP Review");
+    else if (act === "print-report") printAs("Stability Report");
     else if (act === "ep-new") openEarlyPull(null);
     else if (act === "ep-open") { var sp0 = store.getSample(id); openEarlyPull(sp0 ? sp0.sampleId : null); }
     else if (act === "ep-reviewer-approve") epAction(id, "reviewer_approve", "Reviewer approved");
@@ -3188,7 +3197,7 @@
   }
 
   function overlayReport(s) {
-    openOverlay('<div class="drawer-h"><div><h2>Report preview</h2><div class="muted" style="font-size:12px">' + h(s.sampleId) + '</div></div><div class="spacer"></div><button class="btn small" onclick="window.print()">Print</button> <button class="x" data-act="close-overlay">&times;</button></div><div class="drawer-b">' + reportHTML(store.getSample(s.id)) + "</div>");
+    openOverlay('<div class="drawer-h"><div><h2>Report preview</h2><div class="muted" style="font-size:12px">' + h(s.sampleId) + '</div></div><div class="spacer"></div><button class="btn small" data-act="print-report">Print</button> <button class="x" data-act="close-overlay">&times;</button></div><div class="drawer-b">' + reportHTML(store.getSample(s.id)) + "</div>");
   }
 
   function onViewChange(e) {
@@ -3247,6 +3256,7 @@
     if (!btn) return;
     var act = btn.getAttribute("data-act"), id = btn.getAttribute("data-id");
     if (act === "stp-upload-save") { stpUploadSave(); }
+    else if (act === "print-report") { printAs("Stability Report"); }
     else if (act === "wd-save") {
       var dateEl = document.getElementById("wdDate");
       var val = dateEl ? dateEl.value : "";
