@@ -303,6 +303,14 @@
 
   function render() {
     route = parseHash();
+    /* Search is not needed on the Dashboard; hide it there and clear any carried-over term. */
+    var gsw = document.getElementById("globalSearchWrap");
+    if (gsw) gsw.style.display = (route.name === "dashboard") ? "none" : "";
+    if (route.name === "dashboard" && filters.search) {
+      filters.search = "";
+      var gse = document.getElementById("globalSearch");
+      if (gse) gse.value = "";
+    }
     var target = route.name === "sample" ? "samples" : (route.name === "review" ? "analysis" : ((route.name === "project" || route.name === "datasheet" || route.name === "protocoldoc") ? "protocols" : route.name));
     var title = TITLES[route.name] || ["Dashboard", ""];
     document.getElementById("pageTitle").textContent = title[0];
