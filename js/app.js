@@ -826,7 +826,7 @@
     return demoNotice() +
       '<div class="grid-2">' +
       '<div class="card"><div class="card-h"><h3>Timeline Rules</h3><span class="hint">source of truth for date logic</span></div><div class="card-b">' +
-      '<label class="fld">Withdrawal window (days after planned date)</label><input class="input" id="setWindow" type="number" min="0" value="' + S.settings.withdrawalWindowDays + '" />' +
+      '<label class="fld">Withdrawal window (days, including the planned date)</label><input class="input" id="setWindow" type="number" min="1" value="' + S.settings.withdrawalWindowDays + '" />' +
       '<label class="fld" style="margin-top:10px">Analysis completion timeline (days after actual withdrawal)</label><input class="input" id="setAnalysis" type="number" min="0" value="' + S.settings.analysisDueDays + '" />' +
       '<label class="fld" style="margin-top:10px">Report timeline (days after analysis completion)</label><input class="input" id="setReport" type="number" min="0" value="' + S.settings.reportDueDays + '" />' +
       '<div style="margin-top:14px"><button class="btn primary" data-act="settings-save">Save rules</button></div>' +
@@ -1434,6 +1434,7 @@
       '<dl class="meta"><dt>Planned</dt><dd>' + fmt(s.plannedWithdrawal) + "</dd><dt>Window</dt><dd>" + fmt(d.earliestWithdrawal) + " → " + fmt(d.latestWithdrawal) + "</dd></dl>" +
       '<label class="fld" style="margin-top:12px">Actual withdrawal date</label><input class="input" type="date" id="wdDate" value="' + today() + '" />' +
       '<label class="fld" style="margin-top:12px">Also start analysis now?</label><select class="select" id="wdStart"><option value="no">No, just record withdrawal</option><option value="yes">Yes, set analysis start to this date</option></select>' +
+      '<label class="fld" style="margin-top:12px">Reason (required if the actual date is before the planned date)</label><input class="input" id="wdReason" placeholder="e.g. R&D request / early withdrawal" />' +
       '<div style="margin-top:16px"><button class="btn primary" data-act="wd-save" data-id="' + s.id + '">Save withdrawal</button> <button class="btn ghost" data-act="close-overlay">Cancel</button></div>' +
       '<p class="muted" style="margin-top:12px">Analysis due date is calculated automatically as withdrawal + ' + S.settings.analysisDueDays + " days.</p>" +
       "</div>");
@@ -3279,7 +3280,13 @@
       var dateEl = document.getElementById("wdDate");
       var val = dateEl ? dateEl.value : "";
       if (!val) { alert("Choose an actual withdrawal date."); return; }
+      var sNow = store.getSample(id);
+      var planned = sNow ? sNow.plannedWithdrawal : null;
+      var reasonEl = document.getElementById("wdReason");
+      var reason = reasonEl ? String(reasonEl.value).trim() : "";
+      if (planned && val < planned && !reason) { alert("A reason is required when withdrawing before the planned date."); return; }
       var patch = { actualWithdrawal: val };
+      if (planned && val < planned) patch.earlyReason = reason;
       if (document.getElementById("wdStart").value === "yes") patch.analysisStart = val;
       var res = store.validateSample(Object.assign({}, store.getSample(id), patch));
       if (res.length) { alert(res.join("\n")); return; }

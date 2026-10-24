@@ -157,6 +157,11 @@ if (!viewClick || !overlayClick) { failures.push("click handlers not registered"
 else {
   click(viewClick, { "data-act": "wd-open", "data-id": subject.id });
   if (ids["overlayRoot"].innerHTML.indexOf("Record Actual Withdrawal") < 0) failures.push("withdrawal drawer did not open");
+  document.getElementById("wdDate").value = SD.dates.addDays(planned, -1);
+  document.getElementById("wdReason").value = "";
+  click(overlayClick, { "data-act": "wd-save", "data-id": subject.id });
+  if (subject.actualWithdrawal) failures.push("early withdrawal without a reason was allowed");
+  else console.log("  early withdrawal without a reason rejected");
   document.getElementById("wdDate").value = planned;
   document.getElementById("wdStart").value = "no";
   click(overlayClick, { "data-act": "wd-save", "data-id": subject.id });

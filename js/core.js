@@ -79,7 +79,7 @@
     var R = Number(settings.reportDueDays);
     return {
       earliestWithdrawal: sample.plannedWithdrawal || null,
-      latestWithdrawal: sample.plannedWithdrawal ? dates.addDays(sample.plannedWithdrawal, W) : null,
+      latestWithdrawal: sample.plannedWithdrawal ? dates.addDays(sample.plannedWithdrawal, Math.max(0, W - 1)) : null,
       analysisDue: sample.actualWithdrawal ? dates.addDays(sample.actualWithdrawal, A) : null,
       reportDue: sample.analysisCompleteDate ? dates.addDays(sample.analysisCompleteDate, R) : null
     };
