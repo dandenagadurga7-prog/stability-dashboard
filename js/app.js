@@ -861,17 +861,17 @@
       var ers = (pr.ers && pr.ers.length) ? pr.ers : (pr.er ? [pr.er] : []);
       if (!ers.length) {
         var act0 = pr.packing ? '<button class="btn small primary" data-act="er-generate" data-id="' + p.id + '">Generate ER</button>' : '<span class="muted">Pack first</span>';
-        return "<tr><td><span class=\"muted\">Not generated</span></td><td>" + h(p.protocolNo) + '</td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + "</td><td>—</td><td>—</td><td>" + act0 + "</td></tr>";
+        return "<tr><td><span class=\"muted\">Not generated</span></td><td>" + h(p.protocolNo) + '</td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + "</td><td>—</td><td>—</td><td>" + h((p.timePoints || []).join(", ") + " M") + "</td><td>" + act0 + "</td></tr>";
       }
       return ers.map(function (e) {
         var cond = e.condition || protocolConditions(p);
         var lc = ((pr.loading && pr.loading.conditions) || []).filter(function (c) { return c.condition === cond; })[0];
         var chamber = lc ? lc.chamberName : (pr.loading ? (pr.loading.chamberName || "—") : "—");
-        return "<tr><td><strong>" + h(e.erNumber) + "</strong></td><td>" + h(p.protocolNo) + '</td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + "</td><td>" + h(chamber) + "</td><td>" + h(cond) + '</td><td><a class="btn small" href="#/project/' + p.id + '">Trace</a></td></tr>';
+        return "<tr><td><strong>" + h(e.erNumber) + "</strong></td><td>" + h(p.protocolNo) + '</td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + "</td><td>" + h(chamber) + "</td><td>" + h(cond) + "</td><td>" + h((p.timePoints || []).join(", ") + " M") + '</td><td><a class="btn small" href="#/project/' + p.id + '">Trace</a></td></tr>';
       }).join("");
     }).join("");
-    return searchBar() + '<div class="notice"><strong>ER = traceability reference.</strong> Each storage condition gets its own ER number, so every condition is tracked separately through packing → chamber → withdrawal → analysis → final report.</div>' +
-      '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>ER Number</th><th>Protocol</th><th>Product</th><th>Batch</th><th>Chamber</th><th>Condition</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
+    return searchBar() + '<div class="notice" style="background:#fff;border:1px solid #111;color:#111"><strong style="color:#111">ER = traceability reference.</strong> Each storage condition gets its own ER number, so every condition is tracked separately through packing → chamber → withdrawal → analysis → final report.</div>' +
+      '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>ER Number</th><th>Protocol</th><th>Product</th><th>Batch</th><th>Chamber</th><th>Condition</th><th>Time Points</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
   };
 
   VIEWS.chambers = function () {
