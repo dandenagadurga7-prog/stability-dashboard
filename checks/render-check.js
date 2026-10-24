@@ -419,6 +419,8 @@ else {
   var crNoBefore = crp.protocolNo;
   if (!/^PT-CR-\d{3}-00$/.test(crNoBefore)) failures.push("protocol number format wrong (want PT-CR-001-00): " + crNoBefore);
   else console.log("  protocol number -> " + crNoBefore);
+  if (crp.id !== crp.protocolNo) failures.push("record id is not the protocol number: " + crp.id);
+  else console.log("  record id = protocol number -> " + crp.id);
   /* a second batch of the same product increments the trailing order to 01 */
   click(viewClick, { "data-act": "new-protocol" });
   document.getElementById("npProduct").value = "CR Drug batch 2";

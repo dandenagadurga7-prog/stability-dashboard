@@ -3308,7 +3308,6 @@
     } else if (act === "np-save") {
       var f = readProtocolForm();
       if (!f.product || !f.batch) { alert("Product and batch are required."); return; }
-      var nid = "p" + Date.now();
       var pcode = (f.code || "PROT").toUpperCase().replace(/[^A-Z0-9]/g, "") || "PROT";
       /* Protocol number: PT-<product code>-<product seq>-<batch order>, e.g. PT-AX-001-00.
          Same product code -> the trailing order increments 00, 01, 02 ... for each new protocol/batch. */
@@ -3318,6 +3317,7 @@
         if (mm) orderN = Math.max(orderN, parseInt(mm[2], 10) + 1);
       });
       var protoNo = "PT-" + pcode + "-001-" + String(orderN).padStart(2, "0");
+      var nid = protoNo; /* the record id IS the protocol number, so links are easy to trace */
       var newProto = {
         id: nid, protocolNo: protoNo, product: f.product,
         productCode: f.code || "—", apiOrForm: "Drug substance",
