@@ -2726,11 +2726,12 @@
       var candidates = batches.filter(function (e) { return !pid || e.pid === pid; });
       var bEntry = candidates.filter(function (e) { return e.count > 0; })[0] || candidates[0] || batches[0];
       batch = bEntry ? bEntry.batch : "";
+      if (!pid && bEntry && bEntry.pid) pid = bEntry.pid;
     }
     if (!batches.some(function (e) { return e.batch === batch; })) batch = batches.length ? batches[0].batch : "";
     if (!pid && !wsBatchSamples(batch).length) {
       var withSamples = batches.filter(function (e) { return e.count > 0; })[0];
-      if (withSamples) batch = withSamples.batch;
+      if (withSamples) { batch = withSamples.batch; pid = withSamples.pid; }
     }
     var stps = wsStpEntries(batch);
     var usedStp = preSample && preSample.worksheet && preSample.worksheet.stpNumber
@@ -2771,6 +2772,7 @@
     var wsStpEl = document.getElementById("wsStp");
     if (wsStpEl) wsStpEl.value = stpId;
     renderWsTests(preselectSampleId);
+    if (typeof setTimeout !== "undefined") setTimeout(function () { if (document.getElementById("wsContext")) renderWsContext(preselectSampleId); }, 0);
     var pickedWrap = document.getElementById("wsPickedWrap");
     if (pickedWrap) pickedWrap.innerHTML = wsPickedStpHTML();
   }
