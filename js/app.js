@@ -1642,6 +1642,20 @@
     return S.chambers.map(function (c) { return '<option value="' + h(c.id) + '"' + (sel === c.id ? " selected" : "") + ">" + h(c.id + " — " + c.name + " (" + c.temperature + (c.humidity && c.humidity !== "NA" ? " / " + c.humidity : "") + ")") + "</option>"; }).join("");
   }
 
+  /* Months for one condition: use that condition's own time points when set, else the protocol's. */
+  function monthsForCondition(p, cond) {
+    var m = p.protocolMeta || {};
+    var list = (m.schedule && m.schedule.conditions) || [];
+    var hit = list.filter(function (c) { return c.label === cond; })[0];
+    if (!hit) {
+      var mm = String(cond).match(/-?\d{1,3}/);
+      var t = mm ? mm[0] : null;
+      hit = list.filter(function (c) { return t && String(c.label).indexOf(t) >= 0; })[0];
+    }
+    if (hit && hit.months && hit.months.length) return hit.months.slice();
+    return (p.timePoints && p.timePoints.length) ? p.timePoints : [1, 2, 3, 6, 9, 12];
+  }
+
   function addScheduleConditions(p, loading, conds) {
     var n = S.samples.length, total = 0;
     conds.forEach(function (lc, ci) {
@@ -1656,7 +1670,7 @@
       });
       S.results[initialId] = [];
       total++;
-      p.timePoints.forEach(function (tp, i) {
+      monthsForCondition(p, lc.condition).forEach(function (tp, i) {
         var sid = "SMP-" + String(++n).padStart(4, "0");
         S.samples.push({
           id: "g" + Date.now() + "_" + ci + "_" + i, sampleId: sid, protocolId: p.id, protocolNo: p.protocolNo,
@@ -1893,6 +1907,15 @@
     setv("npCode", m.projectCode || p.productCode || "");
     setv("npMfg", m.manufacturingLocation || "");
     setv("npTp", (p.timePoints && p.timePoints.length ? p.timePoints : [1, 2, 3, 6, 9, 12]).join(", "));
+    npMonthsOverride = null;
+    var schC = (m.schedule && m.schedule.conditions) || [];
+    if (schC.length) {
+      npMonthsOverride = {};
+      schC.forEach(function (c, ci) {
+        var months = (c.months && c.months.length) ? c.months.slice() : (c.rows || []).map(function (r) { var mm = String(r.label || "").match(/(\d+)/); return mm ? parseInt(mm[1], 10) : 0; }).filter(function (n) { return n > 0; });
+        npMonthsOverride[ci] = months.length ? months : [1, 2, 3, 6, 9, 12];
+      });
+    }
     setv("npStpNo", m.stpNo || "");
     setv("npDateIn", m.dateIn || today());
     check("npReason1", has(m.reason, "1. New product"));
@@ -1922,6 +1945,8 @@
     setv("npPackMiddle", pk.middle || "");
     setv("npPackOuter", pk.outermost || "");
     (sch.conditions || []).forEach(function (cond, ci) {
+      var months = (cond.months && cond.months.length) ? cond.months : (cond.rows || []).map(function (r) { var mm = String(r.label || "").match(/(\d+)/); return mm ? parseInt(mm[1], 10) : 0; }).filter(function (n) { return n > 0; });
+      setv("npTp_" + ci, months.join(", "));
       setv("npWaterText_" + ci, cond.waterText || "");
       setv("npRelatedText_" + ci, cond.relatedText || "");
       setv("npOtherTest_" + ci, cond.otherText || "");
@@ -1932,6 +1957,7 @@
         });
       });
     });
+    npMonthsOverride = null;
   }
 
   function readProtocolForm() {
@@ -2053,14 +2079,31 @@
     return { labels: labels, names: names, all: names.concat(["Enantiomeric purity by HPLC", "Other test"]) };
   }
 
-  /* Time points the analyst typed for this protocol (months). Any months, any count. */
-  function npTpMonths() {
-    var tpEl = document.getElementById("npTp");
-    var tps = String(tpEl ? tpEl.value : "").split(",").map(function (x) { return parseInt(x.trim(), 10); }).filter(function (n) { return n > 0; });
-    tps = tps.filter(function (n, i) { return tps.indexOf(n) === i; }).sort(function (a, b) { return a - b; });
-    return tps.length ? tps : [1, 2, 3, 6, 9, 12];
+  /* Time points per condition (months). Each condition can have its own months. */
+  var npMonthsOverride = null;
+  function parseMonthList(v) {
+    var t = String(v || "").split(",").map(function (x) { return parseInt(x.trim(), 10); }).filter(function (n) { return n > 0; });
+    t = t.filter(function (n, i) { return t.indexOf(n) === i; }).sort(function (a, b) { return a - b; });
+    return t;
   }
-  function npCols() { return ["INITIAL"].concat(npTpMonths().map(monthLabel)); }
+  function npTpMonths(ci) {
+    var perCondition = (ci !== null && ci !== undefined);
+    var el = document.getElementById(perCondition ? ("npTp_" + ci) : "npTp");
+    var t = parseMonthList(el ? el.value : "");
+    if (!t.length && perCondition && npMonthsOverride && npMonthsOverride[ci]) t = npMonthsOverride[ci].slice();
+    if (!t.length && perCondition) {
+      var g = document.getElementById("npTp");
+      t = parseMonthList(g ? g.value : "");
+    }
+    return t.length ? t : [1, 2, 3, 6, 9, 12];
+  }
+  function npCols(ci) { return ["INITIAL"].concat(npTpMonths(ci).map(monthLabel)); }
+  function unionMonths(schedule) {
+    var seen = {};
+    ((schedule && schedule.conditions) || []).forEach(function (c) { (c.months || []).forEach(function (m) { seen[m] = 1; }); });
+    var out = Object.keys(seen).map(function (k) { return parseInt(k, 10); }).filter(function (n) { return n > 0; }).sort(function (a, b) { return a - b; });
+    return out.length ? out : [1, 2, 3, 6, 9, 12];
+  }
 
   var NP_CONDS = [["npCondA", "40±2°C / 75±5% RH"], ["npCondB", "25±2°C / 60±5% RH"], ["npCondC", "5±3°C"], ["npCondD", "-20°C±5°C"], ["npCondE", "Extra samples loaded"], ["npCondF", "Any other (specify)"]];
 
@@ -2078,6 +2121,8 @@
     if (!el) return;
     var condLabels = npCondLabels();
     var tables = condLabels.map(function (cond, ci) {
+      var months = npTpMonths(ci);
+      var cols = ["INITIAL"].concat(months.map(monthLabel));
       var headCells = SCHED_ROWS.map(function (n) {
         var extra = "";
         if (n.indexOf("Water content") === 0) extra = '<br><input class="input" id="npWaterText_' + ci + '" placeholder="type LOD / TGA" style="width:112px;margin-top:4px" />';
@@ -2086,8 +2131,9 @@
         return '<th class="num">' + hHead(n) + extra + "</th>";
       }).join("");
       var head = (cond ? '<tr><th class="num" colspan="' + (SCHED_ROWS.length + 1) + '" style="text-align:center">' + h(cond) + "</th></tr>" : "") +
+        '<tr><th>Time points (months)</th><td colspan="' + SCHED_ROWS.length + '"><input class="input" id="npTp_' + ci + '" value="' + h(months.join(", ")) + '" placeholder="e.g. 1, 2, 3  (leave only the months this condition needs)" /></td></tr>' +
         "<tr><th>Schedule</th>" + headCells + "</tr>";
-      var body = npCols().map(function (tp, ri) {
+      var body = cols.map(function (tp, ri) {
         return "<tr><td>" + h(tp) + "</td>" + SCHED_ROWS.map(function (n, ti) {
           var def = ti < SCHED_DEFAULT_TICK;
           return '<td class="num"><select class="select sched-sel" id="npSc_' + ci + "_" + ri + "_" + ti + '">' +
@@ -2121,12 +2167,15 @@
         var wt = document.getElementById("npWaterText_" + ci);
         var rt = document.getElementById("npRelatedText_" + ci);
         var ot = document.getElementById("npOtherTest_" + ci);
+        var months = npTpMonths(ci);
+        var cols = ["INITIAL"].concat(months.map(monthLabel));
         return {
           label: cond,
+          months: months,
           waterText: wt ? String(wt.value).trim() : "",
           relatedText: rt ? String(rt.value).trim() : "",
           otherText: ot ? String(ot.value).trim() : "",
-          rows: npCols().map(function (tp, ri) {
+          rows: cols.map(function (tp, ri) {
             return { label: tp, marks: SCHED_ROWS.map(function (n, ti) { var el = document.getElementById("npSc_" + ci + "_" + ri + "_" + ti); return (el && el.value) ? el.value : "X"; }) };
           })
         };
@@ -3269,7 +3318,7 @@
         productCode: f.code || "—", apiOrForm: "Drug substance",
         storageCondition: f.conditionText || "25°C ± 2°C / 60% RH ± 5% RH", humidity: "NA",
         pack: f.packingText || "Not specified", batches: [f.batch],
-        timePoints: npTpMonths(), tests: f.tests.length ? f.tests : (S.testLibrary || []).slice(0, 6).map(function (t) { return t.id; }),
+        timePoints: unionMonths(f.schedule), tests: f.tests.length ? f.tests : (S.testLibrary || []).slice(0, 6).map(function (t) { return t.id; }),
         effectiveDate: today(), version: "V1.0", status: "Active",
         reason: f.reasons.join("; ") || "—", projectCode: f.code || "—",
         manufacturingLocation: f.mfg, dateIn: f.dateIn,
@@ -3295,7 +3344,7 @@
       upProto.manufacturingLocation = up.mfg;
       upProto.dateIn = up.dateIn;
       if (up.tests.length) upProto.tests = up.tests;
-      upProto.timePoints = npTpMonths();
+      upProto.timePoints = unionMonths(up.schedule);
       var um = upProto.protocolMeta || (upProto.protocolMeta = {});
       um.drugSubstance = up.product; um.batch = up.batch;
       um.reason = up.reasons; um.reasonOther = up.reasonOther;
@@ -3434,7 +3483,16 @@
     }
     if (e.target && e.target.id === "epSample") renderEpFields();
     if (e.target && e.target.id === "epReqDate") recomputeEp();
-    if (e.target && (e.target.id === "npTp" || e.target.id === "npTests")) renderNpSchedule();
+    if (e.target && e.target.id === "npTp") {
+      var gTps = npTpMonths();
+      var gCondCount = npCondLabels().length;
+      for (var gci = 0; gci < gCondCount; gci++) { var gtpEl = document.getElementById("npTp_" + gci); if (gtpEl) gtpEl.value = gTps.join(", "); }
+      renderNpSchedule();
+    } else if (e.target && /^npTp_/.test(e.target.id)) {
+      renderNpSchedule();
+    } else if (e.target && e.target.id === "npTests") {
+      renderNpSchedule();
+    }
     if (e.target && /^npCond/.test(e.target.id)) renderNpSchedule();
     if (e.target && /^res_chk_/.test(e.target.id)) { var resRow = document.getElementById("resRow_" + e.target.id.slice(8)); if (resRow) resRow.style.display = (e.target.checked === false) ? "none" : ""; }
   }

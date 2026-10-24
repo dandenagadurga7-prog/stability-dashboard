@@ -522,6 +522,24 @@ var wstep = SD.lifecycle.checklist(S, npid).filter(function (x) { return x.key =
 if (!wstep || !wstep.done) failures.push("withdrawal step did not tick after all due samples withdrawn (" + (wstep ? wstep.detail : "?") + ")");
 else console.log("  withdrawal step ticked after all due samples withdrawn (" + wstep.detail + ")");
 
+/* Per-condition time points: 5C can be 1-3 months while 25C is 1-12 months */
+console.log("\nProtocol: per-condition time points");
+click(viewClick, { "data-act": "new-protocol" });
+document.getElementById("npProduct").value = "Month Test";
+document.getElementById("npBatch").value = "MT-1";
+document.getElementById("npCondA").checked = true;
+document.getElementById("npCondB").checked = true;
+document.getElementById("npCondC").checked = false;
+document.getElementById("npTp_0").value = "1, 2, 3";
+document.getElementById("npTp_1").value = "1, 2, 3, 6, 9, 12";
+click(overlayClick, { "data-act": "np-save" });
+var mt = S.protocols[S.protocols.length - 1];
+var mtsc = (mt && mt.protocolMeta && mt.protocolMeta.schedule && mt.protocolMeta.schedule.conditions) || [];
+if (mtsc.length < 2) failures.push("per-condition schedule missing: " + mtsc.length + " condition(s)");
+else if ((mtsc[0].months || []).join(",") !== "1,2,3") failures.push("condition 1 months not saved: " + (mtsc[0].months || []).join(","));
+else if ((mtsc[1].months || []).join(",") !== "1,2,3,6,9,12") failures.push("condition 2 months not saved: " + (mtsc[1].months || []).join(","));
+else console.log("  condition 1 = " + mtsc[0].months.join(",") + " months; condition 2 = " + mtsc[1].months.join(",") + " months");
+
 /* STP register: upload the current STP (no approval step), versioned */
 console.log("\nSTP register: upload current STP");
 var prevRole = S.role;
