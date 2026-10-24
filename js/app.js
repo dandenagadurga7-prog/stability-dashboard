@@ -1201,7 +1201,6 @@
       '<div class="card"><div class="card-h"><h3>Lifecycle</h3><span class="hint">' + doneCount + "/" + steps.length + " steps</span></div><div class=\"card-b\">" +
       '<div class="progress"><span style="width:' + pct + '%"></span></div>' + checkHtml + "</div></div>" +
       "</div>" +
-      '<h3 class="section-title">Protocol Approval</h3><div class="card"><div class="card-b list">' + (ap || '<div class="muted">No approvals recorded.</div>') + "</div></div>" +
       '<h3 class="section-title">Time Points <span class="hint">official schedule unchanged</span></h3><div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Sample ID</th><th>Time Point</th><th>Official Withdrawal</th><th>Actual Withdrawal</th><th>AR No</th><th>Status</th></tr></thead><tbody>' + (sampleRows || '<tr><td colspan="5"><div class="empty">Schedule not created yet.</div></td></tr>') + "</tbody></table></div></div>";
   };
 
@@ -1369,7 +1368,6 @@
       docSchedTables +
       '<p class="muted" style="font-size:11px">\u2713 = Tests to be analysed &nbsp;&nbsp; X = Tests not to be analysed &nbsp;&nbsp; @ = Tests to be analyzed on demand</p>' +
       '<div class="sign-grid" style="grid-template-columns:repeat(4,1fr)"><div class="s">Prepared By (Analyst)<br>' + h(sigPrepared) + '</div><div class="s">Reviewed By (ARD)<br>' + h(sigReviewed) + '</div><div class="s">Approved By (CRD)<br>' + h(sigApprovedCrd) + '</div><div class="s">Approved By (ARD)<br>' + h(sigApprovedArd) + "</div></div>" +
-      (ap ? '<p class="muted" style="margin-top:10px">Approval history:<br>' + ap + "</p>" : "") +
       '<div class="rp-foot"><span>Status: ' + h(ps) + "</span><span>Page 1 of 1</span></div>" +
       "</div>";
   };
