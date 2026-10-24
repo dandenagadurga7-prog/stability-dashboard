@@ -3317,7 +3317,7 @@
         if (mm) orderN = Math.max(orderN, parseInt(mm[2], 10) + 1);
       });
       var protoNo = "PT-" + pcode + "-001-" + String(orderN).padStart(2, "0");
-      var nid = protoNo; /* the record id IS the protocol number, so links are easy to trace */
+      var nid = "p" + Date.now(); /* internal record id; the protocol number is separate */
       var newProto = {
         id: nid, protocolNo: protoNo, product: f.product,
         productCode: f.code || "—", apiOrForm: "Drug substance",
