@@ -243,7 +243,6 @@
     ["alerts", "\u2691", "Alerts", "#/alerts"],
     ["audit", "\u21BB", "Audit Trail", "#/audit"],
     ["reports", "\u2637", "Reports", "#/reports"],
-    ["data", "\u21C5", "Excel / Import-Export", "#/data"],
     ["settings", "\u2699", "Settings", "#/settings"]
   ];
 
@@ -408,9 +407,7 @@
     }
 
     return demoNotice() +
-      '<div class="toolbar"><a class="btn primary" href="#/data">Excel Import / Export</a>' +
-      '<a class="btn" href="#/schedule">Monthly Schedule</a>' +
-      '<a class="btn" href="#/datasheet/panz">Anastrozole Data Sheet</a>' +
+      '<div class="toolbar"><a class="btn" href="#/schedule">Monthly Schedule</a>' +
       '<div class="grow"></div></div>' +
       '<div class="kpis">' +
       kpi("Total Samples", c.total, c.products + " products", "accent") +

@@ -109,7 +109,7 @@ goto("#/analysis", "Analysis Worklist");
 goto("#/reports", "Stability Reports");
 goto("#/alerts", "Next 7 Days");
 goto("#/audit", "A. Dhamodar");
-goto("#/data", "Import Monthly Schedule");
+goto("#/data", "Monthly Workload");
 goto("#/settings", "Timeline Rules");
 goto("#/sample/s1", "Tests &amp; Results");
 goto("#/reports/s1", "STABILITY REPORT");
