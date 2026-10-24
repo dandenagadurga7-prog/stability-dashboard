@@ -901,7 +901,7 @@
       var action = pr.er ? '<button class="btn small primary" data-act="load-open" data-id="' + p.id + '">Load into chamber</button>' : '<span class="muted">Generate ER first</span>';
       return "<tr><td>" + er + '</td><td class="wrap">' + h(p.product) + '</td><td>—</td><td>—</td><td>—</td><td>' + action + "</td></tr>";
     }).join("");
-    return searchBar() + '<div class="notice"><strong>Loading creates the schedule.</strong> Once a sample is loaded, the system generates one time-point record per protocol time point (Initial, 1M, 2M …) with its scheduled withdrawal date. Each protocol condition is loaded (and shown) separately.</div>' +
+    return searchBar() + '<div class="notice" style="background:#fff;border:1px solid #111;color:#111"><strong style="color:#111">Loading creates the schedule.</strong> Once a sample is loaded, the system generates one time-point record per protocol time point (Initial, 1M, 2M …) with its scheduled withdrawal date. Each protocol condition is loaded (and shown) separately.</div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>ER Number</th><th>Product</th><th>Chamber</th><th>Condition</th><th>Rack / Shelf</th><th>Loading</th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
   };
 

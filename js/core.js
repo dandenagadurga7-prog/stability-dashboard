@@ -304,6 +304,8 @@
       if (due.length) return { label: "Withdraw " + due.length + " due sample(s)", route: "#/withdrawals" };
       var openAn = samples.filter(function (s) { return s.actualWithdrawal && !s.analysisCompleteDate; });
       if (openAn.length) return { label: "Complete analysis (" + openAn.length + ")", route: "#/analysis" };
+      var pendingWd = samples.filter(function (s) { return !s.actualWithdrawal; });
+      if (pendingWd.length) return { label: "Withdraw samples (" + pendingWd.length + " pending)", route: "#/withdrawals" };
       var pending = samples.filter(function (s) { return s.analysisCompleteDate && s.reportStatus !== "approved"; });
       if (pending.length) return { label: "Review & approve report (" + pending.length + ")", route: "#/reports" };
       if (!(pr.documents || []).length) return { label: "Generate documentation", act: "doc-generate-all", id: protocolId };
