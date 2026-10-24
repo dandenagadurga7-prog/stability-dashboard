@@ -1127,7 +1127,7 @@
     var stpNo = localStp ? localStp.stpNumber : (sp ? sp.stpNumber : stpNoOf(p));
     var version = localStp ? localStp.version : (sp ? sp.version : p.version);
     function pane(title, sub, src) {
-      return '<div class="review-pane"><div class="review-pane-h"><div><strong>' + h(title) + '</strong><div class="muted">' + h(sub) + '</div></div><a class="btn small" href="' + h(src.replace("?embed=1", "")) + '" target="_blank" rel="noopener">Open in new tab</a></div>' +
+      return '<div class="review-pane"><div class="review-pane-h"><div><strong>' + h(title) + '</strong><div class="muted">' + h(sub) + '</div></div></div>' +
         '<iframe class="review-frame" title="' + h(title) + '" src="' + h(src) + '"></iframe></div>';
     }
     return '<div class="toolbar"><a class="btn" href="#/analysis">&larr; Analysis</a><div class="grow"></div><span class="pill">Read-only</span> <button class="btn" onclick="window.print()">Print review</button></div>' +
