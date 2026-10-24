@@ -322,6 +322,10 @@
   function kpi(label, val, note, cls) {
     return '<div class="card kpi ' + (cls || "") + '"><div class="lbl">' + h(label) + '</div><div class="val num">' + val + '</div><div class="note">' + h(note || "") + "</div></div>";
   }
+  function searchHint() {
+    if (!filters.search) return "";
+    return '<span class="pill">Search: ' + h(filters.search) + '</span> <button class="btn small" data-act="clear-search">Clear</button>';
+  }
   function productOptions() {
     var codes = uniq(S.samples.map(function (s) { return s.productCode; })).sort();
     return '<option value="">All products</option>' + codes.map(function (c) {
@@ -408,6 +412,7 @@
 
     return demoNotice() +
       '<div class="toolbar"><a class="btn" href="#/schedule">Monthly Schedule</a>' +
+      (filters.search ? '<div style="margin-left:10px">' + searchHint() + "</div>" : "") +
       '<div class="grow"></div></div>' +
       '<div class="kpis">' +
       kpi("Total Samples", c.total, c.products + " products", "accent") +
@@ -437,13 +442,16 @@
 
       '<h3 class="section-title">Next Actions <span class="hint">what each project needs now</span></h3>' +
       '<div class="card"><div class="card-b list">' +
-      S.protocols.map(function (p) {
+      (S.protocols.filter(function (p) {
+        if (!filters.search) return true;
+        return [p.protocolNo, p.product, p.productCode].join(" ").toLowerCase().indexOf((filters.search || "").toLowerCase()) >= 0;
+      }).map(function (p) {
         var na = SD.lifecycle.nextAction(S, p.id);
         var control = na.act
           ? '<button class="btn small primary" data-act="' + na.act + '" data-id="' + p.id + '">' + h(na.label) + "</button>"
           : '<a class="btn small" href="' + h(na.route) + '">' + h(na.label) + "</a>";
         return '<div class="row"><div class="grow"><a href="#/project/' + p.id + '"><strong>' + h(p.product) + "</strong></a> <span class=\"muted\">" + h(p.protocolNo) + "</span></div>" + control + "</div>";
-      }).join("") +
+      }).join("") || '<div class="muted">No protocols match the search.</div>') +
       "</div></div>" +
 
       '<h3 class="section-title">Monthly Workload <span class="hint">click a month to drill down</span></h3>' +
@@ -473,7 +481,15 @@
   };
 
   VIEWS.protocols = function () {
-    var list = S.protocols.filter(function (p) { return !protoFilter || SD.lifecycle.protocolStatus(S, p.id) === protoFilter; });
+    var q = (filters.search || "").toLowerCase();
+    var list = S.protocols.filter(function (p) {
+      if (protoFilter && SD.lifecycle.protocolStatus(S, p.id) !== protoFilter) return false;
+      if (q) {
+        var hay = [p.protocolNo, p.product, p.productCode, (p.batches || []).join(" ")].join(" ").toLowerCase();
+        if (hay.indexOf(q) < 0) return false;
+      }
+      return true;
+    });
     var rows = list.map(function (p) {
       var ps = SD.lifecycle.protocolStatus(S, p.id), pr = projectOf(p.id);
       return "<tr>" +
@@ -489,10 +505,11 @@
     var opts = [["", "All statuses"], ["DRAFT", "Draft"], ["UNDER_REVIEW", "Under review"], ["PENDING_GL", "Pending Group Leader"], ["CHANGES_REQUESTED", "Changes requested"], ["APPROVED", "Approved"]];
     var sel = opts.map(function (o) { return '<option value="' + o[0] + '"' + (protoFilter === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("");
     return '<div class="toolbar"><div><label class="fld">Status</label><select class="select" data-act="proto-filter" style="min-width:190px">' + sel + "</select></div>" +
+      (filters.search ? '<div style="margin-left:10px">' + searchHint() + "</div>" : "") +
       '<div class="grow"></div><button class="btn primary" data-act="new-protocol">+ New Protocol</button></div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr>' +
       "<th>Protocol No / Status</th><th>Product</th><th>Code</th><th>Batch(es)</th><th>Time Points</th><th>ER</th><th></th>" +
-      "</tr></thead><tbody>" + (rows || '<tr><td colspan="7"><div class="empty">No protocols for this status.</div></td></tr>') + "</tbody></table></div></div>";
+      "</tr></thead><tbody>" + (rows || '<tr><td colspan="7"><div class="empty">' + (filters.search ? "No protocols match the search." : "No protocols for this status.") + "</div></td></tr>") + "</tbody></table></div></div>";
   };
 
   VIEWS.products = function () {
@@ -823,11 +840,16 @@
   };
 
   VIEWS.chambers = function () {
-    var rows = S.chambers.map(function (c) {
+    var q = (filters.search || "").toLowerCase();
+    var list = S.chambers.filter(function (c) {
+      if (!q) return true;
+      return [c.id, c.name, c.temperature, c.humidity, c.location, c.status, c.qualification].join(" ").toLowerCase().indexOf(q) >= 0;
+    });
+    var rows = list.map(function (c) {
       return "<tr><td><strong>" + h(c.id) + "</strong></td><td>" + h(c.name) + "</td><td>" + h(c.temperature) + "</td><td>" + h(c.humidity) + "</td><td>" + h(c.location) + '</td><td class="num">' + h(c.capacity) + "</td><td>" + h(c.status) + "</td><td>" + h(c.qualification) + "</td></tr>";
     }).join("");
-    return '<div class="toolbar"><div class="grow"></div><button class="btn primary" data-act="chamber-new">+ Add chamber / condition</button></div>' +
-      '<div class="card"><div class="card-h"><h3>Stability Chamber Register</h3><span class="hint">conditions are configurable, not hard-coded</span></div><div class="table-wrap"><table class="data"><thead><tr><th>ID</th><th>Name</th><th>Temperature</th><th>Humidity</th><th>Location</th><th>Capacity</th><th>Status</th><th>Qualification</th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
+    return '<div class="toolbar">' + (filters.search ? searchHint() + " " : "") + '<div class="grow"></div><button class="btn primary" data-act="chamber-new">+ Add chamber / condition</button></div>' +
+      '<div class="card"><div class="card-h"><h3>Stability Chamber Register</h3><span class="hint">conditions are configurable, not hard-coded</span></div><div class="table-wrap"><table class="data"><thead><tr><th>ID</th><th>Name</th><th>Temperature</th><th>Humidity</th><th>Location</th><th>Capacity</th><th>Status</th><th>Qualification</th></tr></thead><tbody>' + (rows || '<tr><td colspan="8"><div class="empty">No chambers match the search.</div></td></tr>') + "</tbody></table></div></div>";
   };
 
   VIEWS.loading = function () {
@@ -3098,6 +3120,7 @@
       downloadCSV(base + "-same-columns.csv", [S.sheet.headers].concat(S.sheet.rows));
     }
     else if (act === "clear-filters") { filters = { search: "", product: "", batch: "", status: "", storage: "", analyst: "", timePoint: "" }; render(); }
+    else if (act === "clear-search") { filters.search = ""; var gsel = document.getElementById("globalSearch"); if (gsel) gsel.value = ""; render(); }
     else if (act === "filter-product") { filters = { search: "", product: btn.getAttribute("data-code"), batch: "", status: "", storage: "", analyst: "", timePoint: "" }; location.hash = "#/samples"; render(); }
     else if (act === "protocol-open") openProtocol(id);
     else if (act === "set-month") { scheduleMonth = btn.getAttribute("data-month"); location.hash = "#/schedule"; render(); }
@@ -3508,7 +3531,11 @@
   document.getElementById("roleSelect").value = S.role;
   document.getElementById("roleSelect").addEventListener("change", function (e) { S.role = e.target.value; render(); });
   document.getElementById("globalSearch").addEventListener("keydown", function (e) {
-    if (e.key === "Enter") { filters.search = e.target.value; location.hash = "#/samples"; render(); }
+    if (e.key === "Enter") { filters.search = e.target.value; render(); }
+  });
+  document.getElementById("globalSearch").addEventListener("input", function (e) {
+    filters.search = e.target.value;
+    render();
   });
   document.getElementById("view").addEventListener("click", onViewClick);
   document.getElementById("view").addEventListener("change", onViewChange);
