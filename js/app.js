@@ -318,7 +318,7 @@
 
   /* ---------- shared fragments ---------- */
   function demoNotice() {
-    return '<div class="notice info"><strong>Source status (not an error).</strong> Supplied by you and loaded: the Stability Report format (Hetero R&D Kazipally, F-02-01/ARD015), the Trofinetide study, and the Anastrozole Protocol + STP AL-009-04 (tests, specifications, theory). Not yet supplied: the Monthly Stability Excel file — load your own sheet via Import. Only values you enter or import are shown as results; any unsourced value is labelled, and no unproven value is presented as approved.</div>';
+    return "";
   }
   function kpi(label, val, note, cls) {
     return '<div class="card kpi ' + (cls || "") + '"><div class="lbl">' + h(label) + '</div><div class="val num">' + val + '</div><div class="note">' + h(note || "") + "</div></div>";
