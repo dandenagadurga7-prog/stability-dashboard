@@ -2597,13 +2597,15 @@
   function wsCtxCell(label, value) {
     return '<div class="ws-context-item"><span class="eyebrow">' + h(label) + '</span><strong>' + h(value) + "</strong></div>";
   }
-  function wsContextHTML(preselectSampleId) {
+  function wsContextHTML(preselectSampleId, forcePid, forceBatch) {
     var batchEl = document.getElementById("wsBatch");
-    var batch = batchEl ? batchEl.value : "";
-    var owner = wsBatchEntries().filter(function (e) { return e.batch === batch; })[0];
-    var p = wsSelectedProtocol(), sp = wsSelectedStp();
-    /* the context must always describe the batch that is selected */
-    if (owner && (!p || p.id !== owner.pid)) p = protocolOf(owner.pid) || p;
+    var batch = (forceBatch != null) ? forceBatch : (batchEl ? batchEl.value : "");
+    var p = forcePid ? protocolOf(forcePid) : wsSelectedProtocol();
+    var sp = forcePid ? (stpFor(forcePid) || wsSelectedStp()) : wsSelectedStp();
+    if (!forcePid) {
+      var owner = wsBatchEntries().filter(function (e) { return e.batch === batch; })[0];
+      if (owner && (!p || p.id !== owner.pid)) p = protocolOf(owner.pid) || p;
+    }
     if (p && (!sp || sp.stpNumber !== stpNoOf(p))) sp = stpFor(p.id) || sp;
     if (!p) return '<div class="notice info">Select a batch to see its protocol, STP and time points.</div>';
     var samples = wsBatchSamples(batch, p.id);
@@ -2625,12 +2627,15 @@
     return '<div class="ws-context">' + cells.join("") + "</div>" +
       (s ? "" : '<div class="notice info" style="margin-top:8px">No scheduled time point for this batch yet. You can still review the method, but results can only be saved to a scheduled batch / condition / time point.</div>');
   }
-  function wsDocBarHTML() {
+  function wsDocBarHTML(forcePid, forceBatch) {
     var batchEl = document.getElementById("wsBatch");
-    var batch = batchEl ? batchEl.value : "";
-    var owner = wsBatchEntries().filter(function (e) { return e.batch === batch; })[0];
-    var p = wsSelectedProtocol(), sp = wsSelectedStp();
-    if (owner && (!p || p.id !== owner.pid)) p = protocolOf(owner.pid) || p;
+    var batch = (forceBatch != null) ? forceBatch : (batchEl ? batchEl.value : "");
+    var p = forcePid ? protocolOf(forcePid) : wsSelectedProtocol();
+    var sp = forcePid ? (stpFor(forcePid) || wsSelectedStp()) : wsSelectedStp();
+    if (!forcePid) {
+      var owner = wsBatchEntries().filter(function (e) { return e.batch === batch; })[0];
+      if (owner && (!p || p.id !== owner.pid)) p = protocolOf(owner.pid) || p;
+    }
     if (p && (!sp || sp.stpNumber !== stpNoOf(p))) sp = stpFor(p.id) || sp;
     var stpPart = wsPickedStp ? wsPickedStpLabel() : (sp ? sp.stpNumber + " · Rev " + (sp.version || "—") : (p ? stpNoOf(p) : ""));
     var pair = p
@@ -2645,12 +2650,12 @@
       (sp && sp.storage && !wsPickedStp ? '<button class="btn" data-act="ws-open-source">Open original STP file</button>' : "") +
       "</div></div>";
   }
-  function renderWsContext(preselectSampleId) {
+  function renderWsContext(preselectSampleId, forcePid, forceBatch) {
     var ctx = document.getElementById("wsContext");
-    if (ctx) ctx.innerHTML = wsContextHTML(preselectSampleId);
-    var p = wsSelectedProtocol();
+    if (ctx) ctx.innerHTML = wsContextHTML(preselectSampleId, forcePid, forceBatch);
+    var p = forcePid ? protocolOf(forcePid) : wsSelectedProtocol();
     var batchEl = document.getElementById("wsBatch");
-    var batch = batchEl ? batchEl.value : "";
+    var batch = (forceBatch != null) ? forceBatch : (batchEl ? batchEl.value : "");
     var tp = document.getElementById("wsTimePoint");
     if (tp && p) {
       var samples = wsBatchSamples(batch, p.id);
@@ -2659,7 +2664,7 @@
       if (s) tp.value = s.sampleId;
     }
     var docs = document.getElementById("wsDocBar");
-    if (docs) docs.innerHTML = wsDocBarHTML();
+    if (docs) docs.innerHTML = wsDocBarHTML(forcePid, forceBatch);
   }
 
   function wsOpenBoth() {
@@ -2786,12 +2791,12 @@
     if (pickedWrap) pickedWrap.innerHTML = wsPickedStpHTML();
   }
 
-  function renderWsTests(preselectSampleId) {
-    var p = wsSelectedProtocol();
+  function renderWsTests(preselectSampleId, forcePid, forceBatch) {
+    var p = forcePid ? protocolOf(forcePid) : wsSelectedProtocol();
     var testsEl = document.getElementById("wsTests");
     if (!p) {
       if (testsEl) testsEl.innerHTML = '<div class="muted">Select a batch and STP revision first.</div>';
-      renderWsContext(preselectSampleId);
+      renderWsContext(preselectSampleId, forcePid, forceBatch);
       return;
     }
     var prevChecks = {};
@@ -2807,7 +2812,7 @@
       return '<label class="check" style="cursor:pointer"><input type="checkbox" data-ws-test="' + h(tid) + '"' + (checked ? " checked" : "") + ' /> <div><div class="c-label">' + h(t.name) + '</div><div class="muted">' + h(t.specification) + "</div></div></label>";
     }).join("");
     if (testsEl) testsEl.innerHTML = html;
-    renderWsContext(preselectSampleId);
+    renderWsContext(preselectSampleId, forcePid, forceBatch);
   }
   function sampleByRef(ref) {
     var s = store.getSample(ref);
@@ -3530,7 +3535,7 @@
         wsStpSel.value = wsBatchEntries0.length ? wsBatchEntries0[0].sp.id : "";
       }
       wsClearPickedStp();
-      renderWsTests(null);
+      renderWsTests(null, wsFirstProto ? wsFirstProto.id : "", wsBatchValue);
       var wsSheet0 = document.getElementById("wsSheet");
       if (wsSheet0) wsSheet0.innerHTML = "";
     }

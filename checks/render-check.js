@@ -270,7 +270,12 @@ if (otherB) {
   change(ids["overlayRoot"]._h.change[0], "wsBatch");
   var ctx2 = ids["wsContext"].innerHTML || "";
   if (ctx2.indexOf("Batch</span><strong>" + otherB) < 0) failures.push("context did not follow the batch change to " + otherB);
-  else console.log("  context follows batch change -> " + otherB);
+  else {
+    var otherSample = S.samples.filter(function (s) { return s.batch === otherB; })[0];
+    var otherProto = otherSample ? S.protocols.filter(function (p) { return p.id === otherSample.protocolId; })[0] : null;
+    if (otherProto && ctx2.indexOf("Protocol</span><strong>" + otherProto.protocolNo) < 0) failures.push("context protocol did not follow the batch " + otherB);
+    else console.log("  context follows batch change -> " + otherB + " (protocol " + (otherProto ? otherProto.protocolNo : "?") + ")");
+  }
 }
 if (wsOpenHtml.indexOf('id="wsStpFile"') < 0) failures.push("worksheet has no local STP file picker");
 var wsBatchList = wsOpenHtml;
