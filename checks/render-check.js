@@ -417,6 +417,8 @@ var crp = S.protocols[S.protocols.length - 1];
 if (!crp || crp.product !== "CR Drug") failures.push("CR protocol not created");
 else {
   var crNoBefore = crp.protocolNo;
+  if (!/^PT-CR-\d{3}-00$/.test(crNoBefore)) failures.push("protocol number format wrong (want PT-CR-001-00): " + crNoBefore);
+  else console.log("  protocol number -> " + crNoBefore);
   if (!S.stps.some(function (x) { return x.id === crp.id; })) failures.push("no STP auto-built for the new protocol");
   else {
     var crStp = S.stps.filter(function (x) { return x.id === crp.id; })[0];

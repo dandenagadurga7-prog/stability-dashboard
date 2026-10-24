@@ -3309,10 +3309,14 @@
       var f = readProtocolForm();
       if (!f.product || !f.batch) { alert("Product and batch are required."); return; }
       var nid = "p" + Date.now();
-      var autoNo = SD.ids.next(S, "prot"); /* STB-PROT-<year>-<seq> */
-      var npParts = autoNo.split("-");
       var pcode = (f.code || "PROT").toUpperCase().replace(/[^A-Z0-9]/g, "") || "PROT";
-      var protoNo = "STB-" + pcode + "-" + (npParts[2] || "") + "-" + (npParts[3] || "");
+      /* Protocol number format: PT-<product code>-<sequence>-<revision>, e.g. PT-AX-001-00 */
+      var seqN = 1;
+      (S.protocols || []).forEach(function (x) {
+        var mm = String(x.protocolNo || "").match(new RegExp("^PT-" + pcode + "-(\\d+)", "i"));
+        if (mm) seqN = Math.max(seqN, parseInt(mm[1], 10) + 1);
+      });
+      var protoNo = "PT-" + pcode + "-" + String(seqN).padStart(3, "0") + "-00";
       var newProto = {
         id: nid, protocolNo: protoNo, product: f.product,
         productCode: f.code || "—", apiOrForm: "Drug substance",
