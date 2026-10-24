@@ -3310,13 +3310,14 @@
       if (!f.product || !f.batch) { alert("Product and batch are required."); return; }
       var nid = "p" + Date.now();
       var pcode = (f.code || "PROT").toUpperCase().replace(/[^A-Z0-9]/g, "") || "PROT";
-      /* Protocol number format: PT-<product code>-<sequence>-<revision>, e.g. PT-AX-001-00 */
-      var seqN = 1;
+      /* Protocol number: PT-<product code>-<product seq>-<batch order>, e.g. PT-AX-001-00.
+         Same product code -> the trailing order increments 00, 01, 02 ... for each new protocol/batch. */
+      var orderN = 0;
       (S.protocols || []).forEach(function (x) {
-        var mm = String(x.protocolNo || "").match(new RegExp("^PT-" + pcode + "-(\\d+)", "i"));
-        if (mm) seqN = Math.max(seqN, parseInt(mm[1], 10) + 1);
+        var mm = String(x.protocolNo || "").match(new RegExp("^PT-" + pcode + "-(\\d+)-(\\d+)", "i"));
+        if (mm) orderN = Math.max(orderN, parseInt(mm[2], 10) + 1);
       });
-      var protoNo = "PT-" + pcode + "-" + String(seqN).padStart(3, "0") + "-00";
+      var protoNo = "PT-" + pcode + "-001-" + String(orderN).padStart(2, "0");
       var newProto = {
         id: nid, protocolNo: protoNo, product: f.product,
         productCode: f.code || "—", apiOrForm: "Drug substance",

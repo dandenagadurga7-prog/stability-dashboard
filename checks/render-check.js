@@ -419,6 +419,15 @@ else {
   var crNoBefore = crp.protocolNo;
   if (!/^PT-CR-\d{3}-00$/.test(crNoBefore)) failures.push("protocol number format wrong (want PT-CR-001-00): " + crNoBefore);
   else console.log("  protocol number -> " + crNoBefore);
+  /* a second batch of the same product increments the trailing order to 01 */
+  click(viewClick, { "data-act": "new-protocol" });
+  document.getElementById("npProduct").value = "CR Drug batch 2";
+  document.getElementById("npCode").value = "CR";
+  document.getElementById("npBatch").value = "CR-002";
+  click(overlayClick, { "data-act": "np-save" });
+  var crp2 = S.protocols[S.protocols.length - 1];
+  if (!crp2 || crp2.protocolNo !== "PT-CR-001-01") failures.push("second batch order not 01: " + (crp2 && crp2.protocolNo));
+  else console.log("  second batch number -> " + crp2.protocolNo);
   if (!S.stps.some(function (x) { return x.id === crp.id; })) failures.push("no STP auto-built for the new protocol");
   else {
     var crStp = S.stps.filter(function (x) { return x.id === crp.id; })[0];
