@@ -210,7 +210,10 @@ else {
   click(overlayClick, { "data-act": "load-save", "data-id": npid });
   var gen = SD.lifecycle.samplesFor(S, npid);
   if (!prn.loading) failures.push("loading not saved");
-  if (gen.length !== 7) failures.push("schedule wrong: expected 7 samples (Initial + 6 time points), got " + gen.length);
+  if (gen.length !== 4) failures.push("schedule wrong: expected 4 samples (Initial + 3 time points from npTp='1,3,6'), got " + gen.length);
+  var npProto = S.protocols.filter(function (x) { return x.id === npid; })[0];
+  if (!npProto || (npProto.timePoints || []).join(",") !== "1,3,6") failures.push("protocol time points not taken from the form: " + (npProto ? (npProto.timePoints || []).join(",") : "?"));
+  else console.log("  protocol time points from form -> " + npProto.timePoints.join(", ") + " months");
   console.log("  loading = " + (prn.loading && prn.loading.loadingId) + ", schedule = " + gen.length + " time points");
   goto("#/protocoldoc/" + npid, "Reason(s) for Stability study");
 }
@@ -460,7 +463,7 @@ else {
   document.getElementById("loadChamber_2").value = "CH-01";
   click(overlayClick, { "data-act": "load-save", "data-id": crp.id });
   var gen2 = SD.lifecycle.samplesFor(S, crp.id);
-  if (gen2.length !== 21) failures.push("loading schedule wrong: expected 21 (3 conditions x 7), got " + gen2.length);
+  if (gen2.length !== 12) failures.push("loading schedule wrong: expected 12 (3 conditions x 4 time points), got " + gen2.length);
   else console.log("  loading created " + gen2.length + " samples across 3 conditions");
   goto("#/loading", "CR Drug");
   var crRows = (view.innerHTML.match(/CR Drug/g) || []).length;
@@ -477,7 +480,7 @@ else {
   document.getElementById("laChamber_0").value = "CH-01";
   click(overlayClick, { "data-act": "load-add-save", "data-id": crp.id });
   var gen3 = SD.lifecycle.samplesFor(S, crp.id);
-  if (gen3.length !== 21) failures.push("add condition wrong: expected 21 samples, got " + gen3.length);
+  if (gen3.length !== 12) failures.push("add condition wrong: expected 12 samples, got " + gen3.length);
   if (SD.lifecycle.project(S, crp.id).loading.conditions.length !== 3) failures.push("loading conditions not restored to 3");
   else console.log("  added missed condition -> " + gen3.length + " samples, 3 conditions");
   /* step Back reverts that step and everything after it */

@@ -1892,6 +1892,7 @@
     setv("npBatch", (p.batches || [])[0] || "");
     setv("npCode", m.projectCode || p.productCode || "");
     setv("npMfg", m.manufacturingLocation || "");
+    setv("npTp", (p.timePoints && p.timePoints.length ? p.timePoints : [1, 2, 3, 6, 9, 12]).join(", "));
     setv("npStpNo", m.stpNo || "");
     setv("npDateIn", m.dateIn || today());
     check("npReason1", has(m.reason, "1. New product"));
@@ -2024,6 +2025,9 @@
       "</div>" +
       "</div>" +
 
+      '<div class="eyebrow" style="margin-top:14px">Time points (months - add or remove as the requirement says)</div>' +
+      '<input class="input" id="npTp" value="1, 2, 3, 6, 9, 12" placeholder="e.g. 3 (a 3-month study) or 1, 2, 3, 6, 9, 12, 18, 24" />' +
+      '<p class="muted" style="font-size:11px;margin-top:2px">Comma-separated months. INITIAL is always included; the schedule below updates when you change this.</p>' +
       '<div id="npSchedule"></div>' +
 
       '<div class="eyebrow" style="margin-top:14px">E-Signatures (automatic)</div>' +
@@ -2048,6 +2052,15 @@
     if (sel && sel.selectedOptions) names = Array.prototype.slice.call(sel.selectedOptions).map(function (o) { return o.textContent || o.value; });
     return { labels: labels, names: names, all: names.concat(["Enantiomeric purity by HPLC", "Other test"]) };
   }
+
+  /* Time points the analyst typed for this protocol (months). Any months, any count. */
+  function npTpMonths() {
+    var tpEl = document.getElementById("npTp");
+    var tps = String(tpEl ? tpEl.value : "").split(",").map(function (x) { return parseInt(x.trim(), 10); }).filter(function (n) { return n > 0; });
+    tps = tps.filter(function (n, i) { return tps.indexOf(n) === i; }).sort(function (a, b) { return a - b; });
+    return tps.length ? tps : [1, 2, 3, 6, 9, 12];
+  }
+  function npCols() { return ["INITIAL"].concat(npTpMonths().map(monthLabel)); }
 
   var NP_CONDS = [["npCondA", "40±2°C / 75±5% RH"], ["npCondB", "25±2°C / 60±5% RH"], ["npCondC", "5±3°C"], ["npCondD", "-20°C±5°C"], ["npCondE", "Extra samples loaded"], ["npCondF", "Any other (specify)"]];
 
@@ -2074,7 +2087,7 @@
       }).join("");
       var head = (cond ? '<tr><th class="num" colspan="' + (SCHED_ROWS.length + 1) + '" style="text-align:center">' + h(cond) + "</th></tr>" : "") +
         "<tr><th>Schedule</th>" + headCells + "</tr>";
-      var body = SCHED_COLS.map(function (tp, ri) {
+      var body = npCols().map(function (tp, ri) {
         return "<tr><td>" + h(tp) + "</td>" + SCHED_ROWS.map(function (n, ti) {
           var def = ti < SCHED_DEFAULT_TICK;
           return '<td class="num"><select class="select sched-sel" id="npSc_' + ci + "_" + ri + "_" + ti + '">' +
@@ -2113,7 +2126,7 @@
           waterText: wt ? String(wt.value).trim() : "",
           relatedText: rt ? String(rt.value).trim() : "",
           otherText: ot ? String(ot.value).trim() : "",
-          rows: SCHED_COLS.map(function (tp, ri) {
+          rows: npCols().map(function (tp, ri) {
             return { label: tp, marks: SCHED_ROWS.map(function (n, ti) { var el = document.getElementById("npSc_" + ci + "_" + ri + "_" + ti); return (el && el.value) ? el.value : "X"; }) };
           })
         };
@@ -3256,7 +3269,7 @@
         productCode: f.code || "—", apiOrForm: "Drug substance",
         storageCondition: f.conditionText || "25°C ± 2°C / 60% RH ± 5% RH", humidity: "NA",
         pack: f.packingText || "Not specified", batches: [f.batch],
-        timePoints: [1, 2, 3, 6, 9, 12], tests: f.tests.length ? f.tests : (S.testLibrary || []).slice(0, 6).map(function (t) { return t.id; }),
+        timePoints: npTpMonths(), tests: f.tests.length ? f.tests : (S.testLibrary || []).slice(0, 6).map(function (t) { return t.id; }),
         effectiveDate: today(), version: "V1.0", status: "Active",
         reason: f.reasons.join("; ") || "—", projectCode: f.code || "—",
         manufacturingLocation: f.mfg, dateIn: f.dateIn,
@@ -3282,6 +3295,7 @@
       upProto.manufacturingLocation = up.mfg;
       upProto.dateIn = up.dateIn;
       if (up.tests.length) upProto.tests = up.tests;
+      upProto.timePoints = npTpMonths();
       var um = upProto.protocolMeta || (upProto.protocolMeta = {});
       um.drugSubstance = up.product; um.batch = up.batch;
       um.reason = up.reasons; um.reasonOther = up.reasonOther;
