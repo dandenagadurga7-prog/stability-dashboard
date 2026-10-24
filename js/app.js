@@ -2442,8 +2442,18 @@
     return protocolForStp(wsSelectedStp());
   }
   function wsUsableProtocols() {
+    S.stps = S.stps || [];
     return S.protocols.filter(function (p) {
       var sp = stpFor(p.id);
+      /* build an STP on demand so a just-created protocol is not missing from the batch list */
+      if (!sp && typeof SD.buildStp === "function") {
+        try {
+          sp = SD.buildStp(p);
+          var idx = -1;
+          S.stps.forEach(function (x, i) { if (x && x.id === sp.id) idx = i; });
+          if (idx >= 0) S.stps[idx] = sp; else S.stps.push(sp);
+        } catch (e) { sp = null; }
+      }
       return !!sp && (sp.status || "Draft") !== "Rejected";
     });
   }
