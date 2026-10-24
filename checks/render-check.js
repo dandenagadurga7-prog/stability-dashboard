@@ -428,6 +428,18 @@ else {
   var crp2 = S.protocols[S.protocols.length - 1];
   if (!crp2 || crp2.protocolNo !== "PT-CR-001-01") failures.push("second batch order not 01: " + (crp2 && crp2.protocolNo));
   else console.log("  second batch number -> " + crp2.protocolNo);
+
+  /* Global search filters the CURRENT section and does not jump to Samples */
+  goto("#/protocols", "Protocol");
+  var gsEl = document.getElementById("globalSearch");
+  gsEl.value = "CR";
+  (gsEl._h.input || []).forEach(function (fn) { fn({ target: gsEl }); });
+  if (location.hash !== "#/protocols") failures.push("search changed the route to " + location.hash);
+  if (view.innerHTML.indexOf("PT-CR") < 0) failures.push("protocol search did not match PT-CR");
+  if (view.innerHTML.indexOf("SMP-") >= 0) failures.push("protocol search showed samples");
+  else console.log("  protocols search stays on Protocols (matches PT-CR, no samples)");
+  gsEl.value = "";
+  (gsEl._h.input || []).forEach(function (fn) { fn({ target: gsEl }); });
   if (!S.stps.some(function (x) { return x.id === crp.id; })) failures.push("no STP auto-built for the new protocol");
   else {
     var crStp = S.stps.filter(function (x) { return x.id === crp.id; })[0];

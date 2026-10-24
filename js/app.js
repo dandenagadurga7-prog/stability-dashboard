@@ -326,6 +326,14 @@
     if (!filters.search) return "";
     return '<span class="pill">Search: ' + h(filters.search) + '</span> <button class="btn small" data-act="clear-search">Clear</button>';
   }
+  function sMatch(parts) {
+    var q = (filters.search || "").toLowerCase().trim();
+    if (!q) return true;
+    return parts.filter(Boolean).join(" ").toLowerCase().indexOf(q) >= 0;
+  }
+  function searchBar() {
+    return filters.search ? '<div class="toolbar">' + searchHint() + '<div class="grow"></div></div>' : "";
+  }
   function productOptions() {
     var codes = uniq(S.samples.map(function (s) { return s.productCode; })).sort();
     return '<option value="">All products</option>' + codes.map(function (c) {
@@ -520,13 +528,13 @@
       map[s.productCode].storage[s.storageCondition] = 1;
       map[s.productCode].samples++;
     });
-    var rows = Object.keys(map).sort().map(function (k) {
+    var rows = Object.keys(map).sort().filter(function (k) { var p = map[k]; return sMatch([p.product, p.code, Object.keys(p.batches).join(" "), p.protocol]); }).map(function (k) {
       var p = map[k];
       return "<tr><td><strong>" + h(p.product) + "</strong></td><td>" + h(p.code) + "</td><td>" + h(Object.keys(p.batches).join(", ")) + "</td>" +
         '<td class="wrap">' + h(Object.keys(p.storage).join(" | ")) + "</td><td>" + h(p.protocol) + '</td><td class="num">' + p.samples + "</td>" +
         '<td><button class="btn small" data-act="filter-product" data-code="' + h(p.code) + '">View samples</button></td></tr>';
     }).join("");
-    return '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Product</th><th>Code</th><th>Batch(es)</th><th>Storage Condition</th><th>Protocol</th><th>Samples</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
+    return searchBar() + '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Product</th><th>Code</th><th>Batch(es)</th><th>Storage Condition</th><th>Protocol</th><th>Samples</th><th></th></tr></thead><tbody>' + (rows || '<tr><td colspan="7"><div class="empty">No products match the search.</div></td></tr>') + "</tbody></table></div></div>";
   };
 
   VIEWS.schedule = function () {
@@ -534,6 +542,7 @@
     if (months.indexOf(scheduleMonth) < 0) scheduleMonth = months[months.length - 1];
     var opts = months.map(function (m) { return '<option value="' + m + '"' + (m === scheduleMonth ? " selected" : "") + ">" + dates.monthLabel(m) + "</option>"; }).join("");
     var rows = S.samples.filter(function (s) { return dates.monthKey(s.plannedWithdrawal) === scheduleMonth; })
+      .filter(function (s) { return sMatch([s.product, s.productCode, s.batch, s.protocolNo, s.sampleId, s.timePointLabel]); })
       .sort(function (a, b) { return (a.plannedWithdrawal || "").localeCompare(b.plannedWithdrawal || ""); });
     var body = rows.length ? rows.map(function (s) {
       var d = computeDatesFor(s), st = statusOf(s);
@@ -549,6 +558,7 @@
         '<button class="btn small" data-act="open-sample" data-id="' + s.id + '">Open</button></td></tr>';
     }).join("") : '<tr><td colspan="9"><div class="empty"><div class="big">No samples planned in this month</div>Choose another month.</div></td></tr>';
     return '<div class="toolbar"><div><label class="fld">Month</label><select class="select" data-act="month-select" style="min-width:200px">' + opts + "</select></div>" +
+      (filters.search ? '<div style="margin-left:10px">' + searchHint() + "</div>" : "") +
       '<div class="grow"></div><button class="btn" data-act="export-month">Export month CSV</button></div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Product</th><th>Code</th><th>Batch</th><th>Time Point</th><th>Planned Withdrawal</th><th>Actual Withdrawal</th><th>Analysis Due</th><th>Status</th><th>Actions</th></tr></thead><tbody>' + body + "</tbody></table></div></div>";
   };
@@ -584,7 +594,8 @@
     var work = S.samples.filter(function (s) {
       var st = statusOf(s).def.code;
       return st === "IN_ANALYSIS" || st === "ANALYSIS_DUE_SOON" || st === "ANALYSIS_OVERDUE" || st === "WITHDRAWN";
-    }).sort(function (a, b) { var da = computeDatesFor(a).analysisDue || "9999"; var db = computeDatesFor(b).analysisDue || "9999"; return da.localeCompare(db); });
+    }).filter(function (s) { return sMatch([s.product, s.productCode, s.batch, s.protocolNo, s.sampleId, s.timePointLabel, s.analyst]); })
+      .sort(function (a, b) { var da = computeDatesFor(a).analysisDue || "9999"; var db = computeDatesFor(b).analysisDue || "9999"; return da.localeCompare(db); });
     var rows = work.map(function (s) {
       var st = statusOf(s), d = computeDatesFor(s);
       return "<tr>" +
@@ -597,7 +608,7 @@
         '<td style="white-space:nowrap">' + (s.analysisStart ? '<button class="btn small" data-act="results-open" data-id="' + s.id + '">Enter results</button>' : '<button class="btn small primary" data-act="start-analysis" data-id="' + s.id + '">Start</button>') +
         ' <button class="btn small" data-act="ws-new-sample" data-id="' + s.id + '">Worksheet</button></td></tr>';
     }).join("");
-    return '<div class="toolbar"><div class="grow"></div><button class="btn primary" data-act="ws-new">+ New analysis worksheet (STP)</button></div>' +
+    return '<div class="toolbar">' + (filters.search ? searchHint() + " " : "") + '<div class="grow"></div><button class="btn primary" data-act="ws-new">+ New analysis worksheet (STP)</button></div>' +
       '<div class="card"><div class="card-h"><h3>Analysis Worklist</h3><span class="hint">withdrawn, in analysis, due soon or overdue</span></div><div class="table-wrap"><table class="data"><thead><tr>' +
       "<th>Sample ID</th><th>Product</th><th>Batch</th><th>Time Point</th><th>Withdrawn</th><th>Analysis Due</th><th>Analyst</th><th>Status</th><th>Action</th>" +
       "</tr></thead><tbody>" + (rows || '<tr><td colspan="9"><div class="empty"><div class="big">No samples in the analysis queue</div></div></td></tr>') + "</tbody></table></div></div>";
@@ -605,6 +616,7 @@
 
   VIEWS.reports = function () {
     var list = S.samples.filter(function (s) { return !!s.analysisCompleteDate; })
+      .filter(function (s) { return sMatch([s.product, s.productCode, s.batch, s.protocolNo, s.sampleId, s.timePointLabel, s.arNumber]); })
       .sort(function (a, b) { return (a.analysisCompleteDate || "").localeCompare(b.analysisCompleteDate || ""); });
     var rows = list.map(function (s) {
       var label = s.reportStatus === "approved" ? '<span class="badge tone-success"><span class="dot"></span>Approved</span>'
@@ -620,7 +632,7 @@
         (s.reportStatus === "generated" ? '<button class="btn small" data-act="report-approve" data-id="' + s.id + '">Approve</button>' : "") +
         "</td></tr>";
     }).join("");
-    return demoNotice() +
+    return demoNotice() + searchBar() +
       '<div class="card"><div class="card-h"><h3>Stability Reports</h3><span class="hint">from the approved report format</span></div><div class="table-wrap"><table class="data"><thead><tr>' +
       "<th>Sample ID</th><th>Product</th><th>Batch</th><th>Time Point</th><th>Analysis Completed</th><th>AR No</th><th>Report Status</th><th>Actions</th>" +
       "</tr></thead><tbody>" + (rows || '<tr><td colspan="7"><div class="empty"><div class="big">No completed analyses yet</div>Complete an analysis to generate a report.</div></td></tr>') + "</tbody></table></div></div>";
@@ -721,7 +733,7 @@
   VIEWS.alerts = function () {
     var t = today();
     var dueToday = [], upcoming = [], overdue = [];
-    S.samples.forEach(function (s) {
+    S.samples.filter(function (s) { return sMatch([s.product, s.productCode, s.batch, s.protocolNo, s.sampleId, s.timePointLabel]); }).forEach(function (s) {
       var st = statusOf(s).def.code, d = computeDatesFor(s);
       if (s.plannedWithdrawal === t && !s.actualWithdrawal) dueToday.push({ s: s, label: "Withdrawal due today" });
       if (d.analysisDue === t && !s.analysisCompleteDate) dueToday.push({ s: s, label: "Analysis due today" });
@@ -745,7 +757,7 @@
     var epApprovedItems = (S.pulls || []).filter(function (ep) { return ep.status === "APPROVED"; })
       .map(function (ep) { var n = dates.diffDays(t, ep.requestedDate); return n <= 7 ? { ep: ep, n: n } : null; }).filter(Boolean)
       .map(function (x) { var s = sampleByRef(x.ep.sampleRef); return s ? { s: s, label: (x.n < 0 ? "Overdue · " : "Due in " + x.n + "d · ") + x.ep.id } : null; }).filter(Boolean);
-    return '<div class="grid-3">' + col("Today", dueToday, "warn") + col("Next 7 Days", upcoming, "info") + col("Overdue", overdue, "danger") + "</div>";
+    return searchBar() + '<div class="grid-3">' + col("Today", dueToday, "warn") + col("Next 7 Days", upcoming, "info") + col("Overdue", overdue, "danger") + "</div>";
   };
 
   function auditRow(a) {
@@ -758,8 +770,9 @@
   }
 
   VIEWS.audit = function () {
-    var rows = S.audit.slice(0, 200).map(auditRow).join("");
-    return '<div class="toolbar"><div class="grow"></div><span class="eyebrow" style="align-self:center">' + S.audit.length + " entries</span></div>" +
+    var matched = S.audit.filter(function (a) { return sMatch([a.user, a.action, a.entity, a.entityId, a.field, a.note]); });
+    var rows = matched.slice(0, 200).map(auditRow).join("");
+    return '<div class="toolbar">' + (filters.search ? searchHint() + " " : "") + '<div class="grow"></div><span class="eyebrow" style="align-self:center">' + matched.length + " entries</span></div>" +
       '<div class="card"><div class="card-b audit">' + (rows || '<div class="muted">No changes recorded.</div>') + "</div></div>";
   };
 
@@ -818,24 +831,24 @@
   var DOC_TYPES = ["Protocol", "Sample Packing Record", "Chamber Loading Record", "Withdrawal Record", "Analysis Summary", "Stability Data Sheet", "Stability Summary", "Final Stability Report"];
 
   VIEWS.packing = function () {
-    var rows = S.protocols.map(function (p) {
+    var rows = S.protocols.filter(function (p) { return sMatch([p.protocolNo, p.product, p.productCode, (p.batches || []).join(" ")]); }).map(function (p) {
       var pr = projectOf(p.id), ps = SD.lifecycle.protocolStatus(S, p.id);
       var action = pr.packing
         ? '<span class="pill">' + h(pr.packing.packingId) + " · " + h(fmt(pr.packing.date)) + "</span>"
         : (ps === "APPROVED" ? '<button class="btn small primary" data-act="pack-open" data-id="' + p.id + '">Pack samples</button>' : '<span class="badge tone-muted"><span class="dot"></span>Awaiting protocol approval</span>');
       return "<tr><td><a href=\"#/project/" + p.id + '">' + h(p.protocolNo) + '</a></td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + '</td><td class="wrap">' + h(protocolConditions(p)) + "</td><td>" + h(p.timePoints.join(", ") + " M") + "</td><td>" + protoBadge(ps) + "</td><td>" + action + "</td></tr>";
     }).join("");
-    return '<div class="card"><div class="card-h"><h3>Sample Packing</h3><span class="hint">approved protocols move here automatically</span></div><div class="table-wrap"><table class="data"><thead><tr><th>Protocol</th><th>Product</th><th>Batch</th><th>Condition</th><th>Time Points</th><th>Protocol Status</th><th>Packing</th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
+    return searchBar() + '<div class="card"><div class="card-h"><h3>Sample Packing</h3><span class="hint">approved protocols move here automatically</span></div><div class="table-wrap"><table class="data"><thead><tr><th>Protocol</th><th>Product</th><th>Batch</th><th>Condition</th><th>Time Points</th><th>Protocol Status</th><th>Packing</th></tr></thead><tbody>' + (rows || '<tr><td colspan="7"><div class="empty">No protocols match the search.</div></td></tr>') + "</tbody></table></div></div>";
   };
 
   VIEWS.er = function () {
-    var rows = S.protocols.map(function (p) {
+    var rows = S.protocols.filter(function (p) { return sMatch([p.protocolNo, p.product, p.productCode, (p.batches || []).join(" ")]); }).map(function (p) {
       var pr = projectOf(p.id);
       var er = pr.er ? '<strong>' + h(pr.er.erNumber) + "</strong>" : '<span class="muted">Not generated</span>';
       var action = pr.er ? '<a class="btn small" href="#/project/' + p.id + '">Trace</a>' : (pr.packing ? '<button class="btn small primary" data-act="er-generate" data-id="' + p.id + '">Generate ER</button>' : '<span class="muted">Pack first</span>');
       return "<tr><td>" + er + "</td><td>" + h(p.protocolNo) + '</td><td class="wrap">' + h(p.product) + "</td><td>" + h(p.batches.join(", ")) + "</td><td>" + (pr.loading ? h((pr.loading.conditions || [pr.loading]).map(function (c) { return c.chamberName; }).join(", ")) : "—") + "</td><td>" + (pr.loading ? h(protocolConditions(p)) : "—") + "</td><td>" + action + "</td></tr>";
     }).join("");
-    return '<div class="notice"><strong>ER = traceability reference.</strong> The ER number links protocol → product → batch → packing → chamber → time point → withdrawal → analysis → final report. Generate it once; every later stage reuses it.</div>' +
+    return searchBar() + '<div class="notice"><strong>ER = traceability reference.</strong> The ER number links protocol → product → batch → packing → chamber → time point → withdrawal → analysis → final report. Generate it once; every later stage reuses it.</div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>ER Number</th><th>Protocol</th><th>Product</th><th>Batch</th><th>Chamber</th><th>Condition</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
   };
 
@@ -853,7 +866,7 @@
   };
 
   VIEWS.loading = function () {
-    var rows = S.protocols.map(function (p) {
+    var rows = S.protocols.filter(function (p) { return sMatch([p.protocolNo, p.product, p.productCode, (p.batches || []).join(" ")]); }).map(function (p) {
       var pr = projectOf(p.id);
       var er = pr.er ? h(pr.er.erNumber) : "—";
       if (pr.loading) {
@@ -866,12 +879,12 @@
       var action = pr.er ? '<button class="btn small primary" data-act="load-open" data-id="' + p.id + '">Load into chamber</button>' : '<span class="muted">Generate ER first</span>';
       return "<tr><td>" + er + '</td><td class="wrap">' + h(p.product) + '</td><td>—</td><td>—</td><td>—</td><td>' + action + "</td></tr>";
     }).join("");
-    return '<div class="notice"><strong>Loading creates the schedule.</strong> Once a sample is loaded, the system generates one time-point record per protocol time point (Initial, 1M, 2M …) with its scheduled withdrawal date. Each protocol condition is loaded (and shown) separately.</div>' +
+    return searchBar() + '<div class="notice"><strong>Loading creates the schedule.</strong> Once a sample is loaded, the system generates one time-point record per protocol time point (Initial, 1M, 2M …) with its scheduled withdrawal date. Each protocol condition is loaded (and shown) separately.</div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>ER Number</th><th>Product</th><th>Chamber</th><th>Condition</th><th>Rack / Shelf</th><th>Loading</th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
   };
 
   VIEWS.withdrawals = function () {
-    var open = S.samples.filter(function (s) { return !s.actualWithdrawal; }).sort(function (a, b) { return (a.plannedWithdrawal || "").localeCompare(b.plannedWithdrawal || ""); });
+    var open = S.samples.filter(function (s) { return !s.actualWithdrawal; }).filter(function (s) { return sMatch([s.product, s.productCode, s.batch, s.protocolNo, s.sampleId, s.timePointLabel]); }).sort(function (a, b) { return (a.plannedWithdrawal || "").localeCompare(b.plannedWithdrawal || ""); });
     var rows = open.length ? open.map(function (s) {
       var d = computeDatesFor(s), st = statusOf(s), pr = projectOf(s.protocolId);
       return "<tr><td>" + (pr.er ? h(pr.er.erNumber) : "—") + '</td><td class="wrap">' + h(s.product) + "</td><td>" + h(s.batch) + "</td><td>" + h(s.storageCondition) + "</td><td>" + h(s.timePointLabel) + "</td>" +
@@ -880,11 +893,11 @@
         "<td>" + statusBadge(st.def) + "</td>" +
         '<td style="white-space:nowrap"><button class="btn small primary" data-act="wd-open" data-id="' + s.id + '">Withdraw</button></td></tr>';
     }).join("") : '<tr><td colspan="8"><div class="empty"><div class="big">Nothing pending</div>All scheduled samples have been withdrawn.</div></td></tr>';
-    return '<div class="card"><div class="card-h"><h3>Withdrawal / Pulling Queue</h3><span class="hint">official schedule stays unchanged</span></div><div class="table-wrap"><table class="data"><thead><tr><th>ER</th><th>Product</th><th>Batch</th><th>Condition</th><th>Time Point</th><th>Official Withdrawal</th><th>Window</th><th>Status</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
+    return searchBar() + '<div class="card"><div class="card-h"><h3>Withdrawal / Pulling Queue</h3><span class="hint">official schedule stays unchanged</span></div><div class="table-wrap"><table class="data"><thead><tr><th>ER</th><th>Product</th><th>Batch</th><th>Condition</th><th>Time Point</th><th>Official Withdrawal</th><th>Window</th><th>Status</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
   };
 
   VIEWS.documentation = function () {
-    var cards = S.protocols.map(function (p) {
+    var cards = S.protocols.filter(function (p) { return sMatch([p.protocolNo, p.product, p.productCode, (p.batches || []).join(" ")]); }).map(function (p) {
       var pr = projectOf(p.id);
       var list = (pr.documents || []).map(function (d) { return '<div class="row"><div class="grow">' + h(d.type) + ' <span class="pill">' + h(d.id) + "</span></div><div class=\"muted\">" + h(d.by + " · " + d.at) + "</div></div>"; }).join("");
       var samples = SD.lifecycle.samplesFor(S, p.id);
@@ -894,11 +907,11 @@
         '<div style="margin-top:10px"><span class="eyebrow">Analysis Reports (AR No)</span><div style="margin-top:6px">' + (ars || '<span class="muted">No completed analyses yet.</span>') + "</div></div>" +
         '<div style="margin-top:12px">' + (ready ? '<button class="btn primary" data-act="doc-generate-all" data-id="' + p.id + '">Generate documents (' + DOC_TYPES.length + ")</button>" : '<span class="muted">Available after all analyses for this project are completed.</span>') + "</div></div></div>";
     }).join("");
-    return '<div class="notice"><strong>Auto-generated from record data.</strong> Product, batch, ER, chamber, condition, time point, STP, analyst, results, reviewer and dates are already in the system and are not re-typed.</div>' + cards;
+    return searchBar() + '<div class="notice"><strong>Auto-generated from record data.</strong> Product, batch, ER, chamber, condition, time point, STP, analyst, results, reviewer and dates are already in the system and are not re-typed.</div>' + (cards || '<div class="muted">No protocols match the search.</div>');
   };
 
   VIEWS["final-reports"] = function () {
-    var rows = S.protocols.map(function (p) {
+    var rows = S.protocols.filter(function (p) { return sMatch([p.protocolNo, p.product, p.productCode, (p.batches || []).join(" ")]); }).map(function (p) {
       var pr = projectOf(p.id), samples = SD.lifecycle.samplesFor(S, p.id);
       var done = samples.filter(function (s) { return s.analysisCompleteDate; }).length;
       var allDone = samples.length > 0 && done === samples.length;
@@ -909,7 +922,7 @@
         : '<span class="muted">' + done + "/" + samples.length + " analyses complete</span>";
       return "<tr><td>" + h(p.protocolNo) + '</td><td class="wrap">' + h(p.product) + "</td><td>" + (pr.er ? h(pr.er.erNumber) : "—") + "</td><td>" + done + "/" + samples.length + "</td><td>" + status + "</td><td>" + action + "</td></tr>";
     }).join("");
-    return '<div class="notice"><strong>Blocked until complete.</strong> A final report cannot be approved while mandatory analyses are open. The system refuses rather than silently completing.</div>' +
+    return searchBar() + '<div class="notice"><strong>Blocked until complete.</strong> A final report cannot be approved while mandatory analyses are open. The system refuses rather than silently completing.</div>' +
       '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Protocol</th><th>Product</th><th>ER</th><th>Analyses</th><th>Final Report</th><th></th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
   };
 
@@ -927,15 +940,16 @@
       var acts = '<button class="btn small" data-act="protocol-open" data-id="' + p.id + '">Methods</button> <a class="btn small" href="#/stdoc/' + p.id + '">Document</a> <a class="btn small" href="#/review/' + p.id + '">Review</a> <button class="btn small primary" data-act="ws-new-stp" data-id="' + p.id + '">Worksheet</button>';
       return "<tr><td><strong>" + h(stpNo) + "</strong></td><td>" + h(sp ? sp.version : p.version) + "</td><td>" + h(fmt(sp ? sp.effectiveDate : p.effectiveDate)) + '</td><td class="wrap">' + h(p.product) + '</td><td class="num">' + (sp ? (sp.tests || []).length : p.tests.length) + "</td><td>" + stpStatusBadge(status) + '</td><td class="wrap">' + h(stpSourceText(sp)) + "</td><td>" + acts + "</td></tr>";
     }
-    var rows = S.protocols.map(rowFor).join("");
+    var rows = S.protocols.filter(function (p) { return sMatch([p.protocolNo, p.product, p.productCode, stpNoOf(p)]); }).map(rowFor).join("");
     var extra = (S.stps || []).filter(function (sp) {
       return sp && !S.protocols.some(function (p) { return p.id === sp.id || stpNoOf(p) === sp.stpNumber; });
-    }).map(function (sp) {
+    }).filter(function (sp) { return sMatch([sp.stpNumber, sp.product, sp.version]); }).map(function (sp) {
       var acts = '<a class="btn small" href="#/stdoc/' + h(sp.id) + '">Document</a>';
       return "<tr><td><strong>" + h(sp.stpNumber) + "</strong></td><td>" + h(sp.version) + "</td><td>" + h(fmt(sp.effectiveDate)) + '</td><td class="wrap">' + h(sp.product || "—") + '</td><td class="num">' + ((sp.tests || []).length) + "</td><td>" + stpStatusBadge(sp.status) + '</td><td class="wrap">' + h(stpSourceText(sp)) + "</td><td>" + acts + "</td></tr>";
     }).join("");
     var canUp = STP_UPLOAD_ROLES.indexOf(S.role) >= 0;
     return '<div class="toolbar"><div class="grow"><span class="pill">Signed-in role: ' + h(S.role) + "</span></div>" +
+      (filters.search ? searchHint() + " " : "") +
       (canUp ? '<button class="btn primary" data-act="stp-upload">+ Upload STP (PDF / DOCX)</button> ' : "") +
       '<button class="btn primary" data-act="ws-new">+ New analysis worksheet (STP)</button></div>' +
       '<div class="notice"><strong>Current STP.</strong> Upload the current STP for a product; the latest uploaded version is used for worksheets and the analyst cannot edit method text, only enter actual lab data. Version history is kept. No separate approval step.</div>' +
@@ -1125,15 +1139,15 @@
   };
 
   VIEWS.users = function () {
-    var rows = S.users.map(function (u) {
+    var rows = S.users.filter(function (u) { return sMatch([u.name, u.role, u.email, u.status]); }).map(function (u) {
       return "<tr><td>" + h(u.name) + "</td><td>" + h(u.role) + "</td><td>" + h(u.email) + '</td><td><span class="badge tone-success"><span class="dot"></span>' + h(u.status) + "</span></td></tr>";
     }).join("");
     var byRole = {};
     S.users.forEach(function (u) { byRole[u.role] = (byRole[u.role] || 0) + 1; });
     var roles = Object.keys(byRole).map(function (r) { return '<span class="pill">' + h(r) + ": " + byRole[r] + "</span>"; }).join(" ");
     return '<div class="notice"><strong>Signed-in role:</strong> ' + h(S.role) + " (change in the top bar). Users and roles are structure only in this build; authentication is not implemented and no regulatory compliance is claimed.</div>" +
-      '<div class="toolbar"><div class="grow">' + roles + '</div><button class="btn" data-act="new-user">+ Add user</button></div>' +
-      '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Status</th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
+      '<div class="toolbar">' + (filters.search ? searchHint() + " " : "") + '<div class="grow">' + roles + '</div><button class="btn" data-act="new-user">+ Add user</button></div>' +
+      '<div class="card"><div class="table-wrap"><table class="data"><thead><tr><th>Name</th><th>Role</th><th>Email</th><th>Status</th></tr></thead><tbody>' + (rows || '<tr><td colspan="4"><div class="empty">No users match the search.</div></td></tr>') + "</tbody></table></div></div>";
   };
 
   VIEWS.project = function (id) {
